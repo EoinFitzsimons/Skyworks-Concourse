@@ -1254,6 +1254,7 @@ class Game{
   /* ---------- input ---------- */
   _wireInput(){
     addEventListener('keydown',e=>{
+      if(e.repeat) return
       if(e.code==='KeyM'){ this.toggleSound(); return }
       if(this.state==='title'){ if(e.code==='Enter') this.beginNew(); return }
       if(this.state==='shop'){ if(e.code==='Escape'||e.code==='KeyE') this.closeShop(); return }
@@ -1334,8 +1335,10 @@ class Game{
       else if(best.type==='pump'){
         if(best.on){ this.toast('Coolant pump running.'); return }
         best.on=true; this.audio.play('pump'); this.fxLabel(best,'PUMP ONLINE','#39ffb8'); this.map.addLight(best.x|0,best.y|0,2.5,0.2)
-        const n=this.pumps.filter(p=>p.on).length; Q.mark('foundry','p'+n)
-        if(n===3){ this.flags.crucibleOn=true; this.crucible.on=true; this.toast('Coolant restored: the crucible is cooling. Lift the lens.','accent',3500) }
+        const n=this.pumps.filter(p=>p.on).length
+        if(n===3){ this.flags.crucibleOn=true; this.crucible.on=true }
+        Q.mark('foundry','p'+n)
+        if(n===3) this.toast('Coolant restored: the crucible is cooling. Lift the lens.','accent',3500)
         else this.toast(`Coolant pump ${n}/3 restarted.`,'accent')
       }else if(best.type==='crucible'){
         if(this.flags.lensTaken) this.toast('The crucible is empty.')
