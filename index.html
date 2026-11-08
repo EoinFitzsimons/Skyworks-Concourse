@@ -1,66 +1,122 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Skyworks Concourse — Isometric JS Game</title>
+<title>Skyworks Concourse — an isometric courier adventure above the clouds</title>
+<meta name="description" content="A single-file isometric browser game: carry a micro-core across three districts of a cargo concourse suspended above the clouds and bring the beacon online. All art drawn on canvas, all audio synthesised with the Web Audio API."/>
 <style>
   :root{
     --bg1:#0b1016; --bg2:#0f1620; --ink:#cfe3ee; --muted:#95a9b8;
-    --accent:#39ffb8; --warn:#ffd45e; --danger:#ff6b6b;
+    --accent:#39ffb8; --warn:#ffd45e; --danger:#ff6b6b; --brass:#d7a74a;
     --panel:#0b131a; --panel2:#0a0f14; --line:#1e2a37;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--ink);font:14px/1.4 system-ui,Segoe UI,Roboto,Arial,sans-serif;overflow:hidden}
-  #root{display:grid;grid-template-rows:auto 1fr}
-  header{display:flex;align-items:center;gap:16px;padding:10px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel2))}
+  #root{display:grid;grid-template-rows:auto 1fr;height:100%}
+  header{display:flex;align-items:center;gap:14px;padding:8px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel2));height:50px}
   .brand{font-weight:700;letter-spacing:.08em;color:#e2f7f0}
-  .stat{margin-left:auto;color:#a4bac7}
-  .stat b{color:#bdf5df}
-  main{position:relative}
-  #c{display:block;margin:0 auto;image-rendering:pixelated}
+  .brand small{display:block;font-weight:400;letter-spacing:.14em;font-size:9px;color:#6f8d9a;text-transform:uppercase}
+  #district{color:var(--brass);letter-spacing:.1em;font-size:12px;text-transform:uppercase;margin-left:8px}
+  .stats{margin-left:auto;display:flex;align-items:center;gap:16px;color:#a4bac7;font-size:13px}
+  .stats b{color:#bdf5df}
+  #hpbar{display:inline-block;width:110px;height:8px;border:1px solid #2a3a48;border-radius:4px;background:#0a1116;vertical-align:middle;overflow:hidden;margin-left:4px}
+  #hpfill{display:block;height:100%;width:100%;background:linear-gradient(90deg,#1fcf90,#39ffb8);transition:width .2s ease}
+  #hpfill.low{background:linear-gradient(90deg,#ff6b6b,#ffb36b)}
+  main{position:relative;overflow:hidden}
+  #c{display:block;margin:0 auto;background:#0b1016}
 
   /* Quest log */
-  aside#ql{position:absolute;top:12px;right:12px;width:320px;max-height:80vh;overflow:auto;background:rgba(10,15,22,.9);border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 28px rgba(0,0,0,.35);padding:12px}
-  aside h2{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#a9cbd8;opacity:.95;margin-bottom:6px}
-  .quest{border:1px solid var(--line);border-radius:8px;padding:10px;background:linear-gradient(180deg,#0b1218,#0a1015);margin-bottom:8px}
-  .quest h3{font-size:14px;margin-bottom:6px}
-  .tag{font-size:11px;color:#9eecc6;background:rgba(57,255,184,.1);border:1px solid rgba(57,255,184,.25);padding:1px 6px;border-radius:999px;margin-left:6px}
-  .q-obj{font-size:13px;color:#a9b8c3;padding-left:12px;position:relative;margin:3px 0}
+  aside#ql{position:absolute;top:12px;right:12px;width:300px;max-height:calc(100% - 80px);overflow:auto;background:rgba(10,15,22,.88);border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 28px rgba(0,0,0,.35);padding:10px 12px}
+  aside h2{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#a9cbd8;margin:4px 0 6px}
+  .quest{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:linear-gradient(180deg,#0b1218,#0a1015);margin-bottom:8px}
+  .quest.q-complete{opacity:.55}
+  .quest.q-locked{opacity:.5;border-style:dashed}
+  .quest h3{font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .tag{font-size:10px;color:#9eecc6;background:rgba(57,255,184,.1);border:1px solid rgba(57,255,184,.25);padding:0 6px;border-radius:999px;margin-left:auto;text-transform:lowercase}
+  .q-obj{font-size:12px;color:#a9b8c3;padding-left:12px;position:relative;margin:2px 0}
   .q-obj::before{content:"•";position:absolute;left:0;top:0;color:#6b90a6}
   .q-done{color:#6fe49f;text-decoration:line-through;opacity:.85}
+  .q-done::before{content:"✓";color:#6fe49f}
   .hidden{display:none!important}
 
   /* Help chip */
-  #help{position:absolute;left:12px;top:12px;max-width:460px;background:rgba(9,14,20,.85);border:1px solid var(--line);border-radius:8px;padding:10px}
-  #help h2{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#a9cbd8;margin-bottom:5px}
-  .kbd{display:inline-block;border:1px solid #2a3948;background:#0b1319;color:#b7c8d1;padding:1px 6px;border-radius:4px;box-shadow:0 1px 0 #000 inset;font-size:12px}
+  #help{position:absolute;left:12px;top:12px;max-width:430px;background:rgba(9,14,20,.85);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px}
+  #help h2{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#a9cbd8;margin-bottom:4px}
+  .kbd{display:inline-block;border:1px solid #2a3948;background:#0b1319;color:#b7c8d1;padding:0 5px;border-radius:4px;box-shadow:0 1px 0 #000 inset;font-size:11px}
 
   /* Toasts */
-  #toasts{position:absolute;left:50%;transform:translateX(-50%);bottom:70px;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-  .toast{background:rgba(7,12,18,.92);border:1px solid var(--line);padding:8px 10px;border-radius:6px;min-width:220px;text-align:center}
-  .accent{color:#39ffb8} .danger{color:#ff6b6b} .warn{color:#ffd45e}
+  #toasts{position:absolute;left:50%;transform:translateX(-50%);bottom:64px;display:flex;flex-direction:column;gap:6px;pointer-events:none;align-items:center}
+  .toast{background:rgba(7,12,18,.92);border:1px solid var(--line);padding:7px 12px;border-radius:6px;min-width:220px;text-align:center;animation:toastIn .18s ease}
+  @keyframes toastIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .accent{color:#39ffb8} .danger{color:#ff6b6b} .warn{color:#ffd45e} .brass{color:#d7a74a}
 
   /* Overlays */
-  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);z-index:20}
-  .panel{min-width:320px;max-width:520px;background:linear-gradient(180deg,#0c141c,#0a1015);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.45);padding:18px;text-align:center}
-  .panel h1{font-size:22px;margin-bottom:12px;color:#e7f6ff}
-  .panel p{color:#b7c6cf;margin-bottom:14px}
-  .btn{display:inline-block;margin:4px;padding:8px 12px;border-radius:6px;border:1px solid #2b3c4e;background:#0b151c;color:#d9e6ee;cursor:pointer}
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,10,.55);backdrop-filter:blur(2px);z-index:20}
+  .panel{min-width:340px;max-width:560px;background:linear-gradient(180deg,#0c141c,#0a1015);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.45);padding:20px 22px;text-align:center}
+  .panel h1{font-size:24px;margin-bottom:10px;color:#e7f6ff;letter-spacing:.04em}
+  .panel p{color:#b7c6cf;margin-bottom:12px}
+  .panel .sub{font-size:12px;color:#7c95a3;letter-spacing:.18em;text-transform:uppercase;margin-bottom:6px}
+  .btn{display:inline-block;margin:4px;padding:8px 14px;border-radius:6px;border:1px solid #2b3c4e;background:#0b151c;color:#d9e6ee;cursor:pointer;font:inherit}
+  .btn:hover{border-color:#3d546a;background:#0e1b24}
   .btn.primary{border-color:#1a9b74;background:#0a201a;color:#baf7e2}
+  .btn.primary:hover{background:#0d2a22}
+  .btn[disabled]{opacity:.45;cursor:default}
 
-  /* Damage flash */
+  /* Title screen */
+  #title .panel{max-width:620px;background:linear-gradient(180deg,rgba(12,20,28,.92),rgba(10,16,21,.96))}
+  #title h1{font-size:34px;letter-spacing:.14em;text-transform:uppercase;color:#f0fbff;text-shadow:0 0 18px rgba(57,255,184,.35)}
+  #title h1 span{display:block;font-size:12px;letter-spacing:.42em;color:var(--brass);text-shadow:none;margin-bottom:6px}
+  #intro{text-align:left;color:#b7c6cf;font-size:14px;line-height:1.55;margin:14px 0 16px;padding:12px 14px;border-left:2px solid var(--brass);background:rgba(215,167,74,.05)}
+  #intro p{margin-bottom:8px}
+  #intro p:last-child{margin:0}
+  .title-foot{font-size:11px;color:#6f8d9a;margin-top:10px}
+
+  /* Shop */
+  #shop .panel{max-width:620px;text-align:left}
+  #shop h1{text-align:center}
+  .shop-row{display:flex;align-items:center;gap:12px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:rgba(11,18,24,.8)}
+  .shop-row .ico{width:34px;height:34px;flex:0 0 34px}
+  .shop-row .txt{flex:1}
+  .shop-row .txt b{display:block;color:#e2f7f0}
+  .shop-row .txt small{color:#8fa6b3}
+  .shop-row .lvl{font-size:11px;color:#7c95a3;letter-spacing:.1em}
+  .shop-row .cost{color:var(--brass);min-width:70px;text-align:right}
+  .shop-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:#a4bac7}
+
+  /* Ending */
+  #ending{background:transparent;backdrop-filter:none;pointer-events:none;flex-direction:column;justify-content:flex-end;padding-bottom:70px}
+  #ending .line{font-size:20px;color:#eafff7;text-shadow:0 2px 12px rgba(0,0,0,.8),0 0 24px rgba(57,255,184,.35);margin:6px 0;opacity:0;transition:opacity .9s ease;letter-spacing:.04em}
+  #ending .line.show{opacity:1}
+  #credits .panel{max-width:520px}
+  #credits dl{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;text-align:left;margin:10px 0 14px;font-size:13px}
+  #credits dt{color:#7c95a3} #credits dd{color:#dff5ec;text-align:right}
+
+  /* Damage flash & district banner */
   #flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%, rgba(255,0,0,.25), rgba(255,0,0,0) 60%);opacity:0;pointer-events:none;transition:opacity .12s ease;z-index:10}
+  #banner{position:absolute;left:50%;top:18%;transform:translateX(-50%);text-align:center;pointer-events:none;opacity:0;transition:opacity .6s ease;z-index:9}
+  #banner h2{font-size:26px;letter-spacing:.3em;text-transform:uppercase;color:#f3fbff;text-shadow:0 2px 14px rgba(0,0,0,.8)}
+  #banner p{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--brass)}
+  #banner.show{opacity:1}
 
-  /* Music pill */
-  #music{position:absolute;bottom:12px;left:12px;background:rgba(9,14,20,.85);border:1px solid var(--line);border-radius:18px;padding:6px 10px;color:#b6c4cf;cursor:pointer;user-select:none}
+  /* Bottom pills */
+  .pills{position:absolute;bottom:12px;left:12px;display:flex;gap:8px}
+  .pill{background:rgba(9,14,20,.85);border:1px solid var(--line);border-radius:18px;padding:5px 10px;color:#b6c4cf;cursor:pointer;user-select:none;font-size:12px}
+  .pill:hover{border-color:#3d546a}
+  #savenote{position:absolute;bottom:14px;right:12px;font-size:11px;color:#5f7886;opacity:0;transition:opacity .5s;pointer-events:none}
+  #savenote.show{opacity:1}
 </style>
 </head>
 <body>
 <div id="root">
   <header>
-    <div class="brand">Skyworks Concourse</div>
-    <div class="stat">HP: <b id="hp">10</b> • FPS: <b id="fps">60</b></div>
+    <div class="brand">Skyworks Concourse<small>Courier run · above the clouds</small></div>
+    <div id="district"></div>
+    <div class="stats">
+      <span>HP <b id="hp">10</b><span id="hpbar"><span id="hpfill"></span></span></span>
+      <span>Shards <b id="shards" class="brass">0</b></span>
+      <span>Time <b id="clock">0:00</b></span>
+    </div>
   </header>
   <main>
     <canvas id="c" width="1280" height="720" aria-label="Game canvas"></canvas>
@@ -68,36 +124,75 @@
     <div id="help">
       <h2>Controls</h2>
       <p>
-        <span class="kbd">WASD</span>/<span class="kbd">Arrows</span> move •
-        <span class="kbd">E</span> interact •
-        <span class="kbd">Space</span> attack •
-        <span class="kbd">Q</span> quests •
-        <span class="kbd">M</span> music on/off
+        <span class="kbd">WASD</span>/<span class="kbd">Arrows</span> move ·
+        <span class="kbd">E</span> interact ·
+        <span class="kbd">Space</span> strike ·
+        <span class="kbd">Q</span> quests ·
+        <span class="kbd">N</span> minimap ·
+        <span class="kbd">M</span> sound ·
+        progress autosaves
       </p>
     </div>
 
     <aside id="ql">
-      <h2>Quests</h2>
+      <h2>Quest log</h2>
       <div id="quests"></div>
     </aside>
 
     <div id="toasts"></div>
     <div id="flash"></div>
-    <div id="music">Music: Off</div>
+    <div id="banner"><h2 id="bannerTitle"></h2><p id="bannerSub"></p></div>
+    <div class="pills">
+      <div class="pill" id="soundBtn">Sound: on</div>
+      <div class="pill" id="saveBtn">Save</div>
+      <div class="pill" id="titleBtn">Title</div>
+    </div>
+    <div id="savenote">Progress saved</div>
 
-    <!-- Overlays -->
+    <!-- Title screen -->
+    <div id="title" class="overlay">
+      <div class="panel">
+        <h1><span>An isometric courier run</span>Skyworks Concourse</h1>
+        <div id="intro">
+          <p>Three decks of brass and glass hang over an endless cloud sea. Once the Skyworks beacon guided every freighter home; tonight it is dark, and the last courier shuttle will not wait.</p>
+          <p>You carry a micro‑core for the Harbour Chief. Cross the Foundry Deck for a focusing lens, align the mirrors of the Observatory Gardens, and bring the beacon back online before the shuttle departs.</p>
+          <p>Drones patrol the catwalks and scuttlers haunt the furnaces. Spend the capacitor shards you find at the Quartermaster to toughen your suit.</p>
+        </div>
+        <button class="btn primary" id="btnNew">Begin a new run</button>
+        <button class="btn" id="btnContinue">Continue saved run</button>
+        <div class="title-foot">Press <span class="kbd">Q</span> in game for the quest log · all art and sound are generated in your browser</div>
+      </div>
+    </div>
+
+    <!-- Shop -->
+    <div id="shop" class="overlay hidden">
+      <div class="panel">
+        <h1>Quartermaster's Kiosk</h1>
+        <p class="sub">Trade capacitor shards for suit upgrades</p>
+        <div id="shopRows"></div>
+        <div class="shop-foot"><span>Shards held: <b id="shopShards" class="brass">0</b></span><button class="btn" id="btnShopClose">Close</button></div>
+      </div>
+    </div>
+
+    <!-- Ending -->
+    <div id="ending" class="overlay hidden"></div>
+    <div id="credits" class="overlay hidden">
+      <div class="panel">
+        <p class="sub">Beacon online</p>
+        <h1>Departure Achieved</h1>
+        <p>The shuttle turns on its new heading and the whole concourse lights up beneath it. Well done, courier.</p>
+        <dl id="creditStats"></dl>
+        <button class="btn primary" id="btnPlayAgain">Play again</button>
+        <button class="btn" id="btnCreditsTitle">Back to title</button>
+      </div>
+    </div>
+
     <div id="overlayGameOver" class="overlay hidden">
       <div class="panel">
         <h1>Systems Overload</h1>
         <p>Your suit shut down after critical damage. The concourse hums without you.</p>
-        <button class="btn primary" id="btnRetry">Retry</button>
-      </div>
-    </div>
-    <div id="overlayWin" class="overlay hidden">
-      <div class="panel">
-        <h1>Departure Achieved</h1>
-        <p>All objectives completed. Clearance granted for the upper decks. Well done, courier.</p>
-        <button class="btn primary" id="btnPlayAgain">Play Again</button>
+        <button class="btn primary" id="btnRetry">Reload last save</button>
+        <button class="btn" id="btnRetryTitle">Back to title</button>
       </div>
     </div>
   </main>
@@ -110,15 +205,17 @@
 function sfc32(a,b,c,d){return function(){a|=0;b|=0;c|=0;d|=0;var t=(a+b|0)+d|0;d=d+1|0;a=b^(b>>>9);b=c+(c<<3)|0;c=(c<<21|c>>>11);c=c+t|0;return (t>>>0)/4294967296}}
 function hashStrToSeed(s){let h=2166136261>>>0; for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*16777619)>>>0} return [h,h^0x9e3779b9,h^0x7f4a7c15,h^0x85ebca6b].map(x=>x>>>0)}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
-function randRange(r,min,max){return min+(max-min)*r()}
+function lerp(a,b,t){return a+(b-a)*t}
 function dist(x1,y1,x2,y2){return Math.hypot(x2-x1,y2-y1)}
+function pick(rng,arr){return arr[(rng()*arr.length)|0]}
+function fmtTime(s){s=s|0; return `${(s/60)|0}:${String(s%60).padStart(2,'0')}`}
 function makeNoise(rng, size=64, octaves=3){
   const base=new Float32Array(size*size); for(let i=0;i<base.length;i++) base[i]=rng()
   function sample(x,y){x=(x%size+size)%size;y=(y%size+size)%size;return base[(y|0)*size+(x|0)]}
   return function(x,y){
     let v=0, amp=1, freq=1, norm=0
     for(let o=0;o<octaves;o++){
-      const sx=(x*freq)%size, sy=(y*freq)%size
+      const sx=((x*freq)%size+size)%size, sy=((y*freq)%size+size)%size
       const x0=sx|0,y0=sy|0,x1=(x0+1)%size,y1=(y0+1)%size
       const tx=sx-x0, ty=sy-y0
       const a=sample(x0,y0), b=sample(x1,y0), c=sample(x0,y1), d=sample(x1,y1)
@@ -131,690 +228,1368 @@ function makeNoise(rng, size=64, octaves=3){
 }
 
 /* ===========================
-   Engine
+   Engine: input, camera, loop
 =========================== */
 class Input{
   constructor(){this.keys=new Set(); this.just=new Set();
-    addEventListener('keydown',e=>{ if(!this.keys.has(e.code)) this.just.add(e.code); this.keys.add(e.code);
+    addEventListener('keydown',e=>{ if(e.repeat) return; if(!this.keys.has(e.code)) this.just.add(e.code); this.keys.add(e.code);
       if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault() })
     addEventListener('keyup',e=>{ this.keys.delete(e.code); this.just.delete(e.code) })
+    addEventListener('blur',()=>{ this.keys.clear(); this.just.clear() })
   }
   down(k){return this.keys.has(k)} pressed(k){const p=this.just.has(k); if(p) this.just.delete(k); return p}
 }
-class Camera{constructor(){this.x=0;this.y=0;this.zoom=1} centerOn(sx,sy,vw,vh){this.x=sx - vw/2; this.y=sy - vh/2}}
+class Camera{
+  constructor(){this.x=0;this.y=0;this.zoom=1;this.tx=0;this.ty=0;this.shake=0}
+  snapTo(sx,sy){this.x=this.tx=sx; this.y=this.ty=sy}
+  follow(sx,sy,dt,stiff=6){this.tx=sx; this.ty=sy; const k=1-Math.exp(-stiff*dt); this.x=lerp(this.x,this.tx,k); this.y=lerp(this.y,this.ty,k); if(this.shake>0) this.shake=Math.max(0,this.shake-dt*2)}
+  apply(g,w,h,t){g.translate(w/2,h/2); g.scale(this.zoom,this.zoom); const sh=this.shake>0?this.shake*6:0; g.translate(-this.x+(sh?Math.sin(t*61)*sh:0),-this.y+(sh?Math.cos(t*47)*sh:0))}
+  /* screen (canvas pixels) -> world (iso screen units) */
+  toWorld(px,py,w,h){return {x:(px-w/2)/this.zoom+this.x, y:(py-h/2)/this.zoom+this.y}}
+  view(w,h){const hw=w/2/this.zoom, hh=h/2/this.zoom; return {l:this.x-hw, t:this.y-hh, r:this.x+hw, b:this.y+hh}}
+}
 class Engine{
   constructor(canvas){this.c=canvas; this.g=canvas.getContext('2d'); this.input=new Input(); this.cam=new Camera();
-    this.updatables=[]; this.renderables=[]; this.fps=60; this._frames=0; this._fpst=0; this.last=0; this._run=false;
-    this.loop=(t)=>{ if(!this._run) return; if(!this.last) this.last=t; const dt=Math.min(0.05,(t-this.last)/1000); this.last=t;
-      this._frames++; this._fpst+=dt; if(this._fpst>=1){this.fps=this._frames; this._frames=0; this._fpst=0; document.getElementById('fps').textContent=this.fps}
+    this.updatables=[]; this.renderables=[]; this.time=0; this.last=0; this._run=false;
+    this.loop=(t)=>{ if(!this._run) return; if(!this.last) this.last=t; const dt=Math.min(0.05,(t-this.last)/1000); this.last=t; this.time+=dt;
       for(const u of this.updatables) u.update?.(dt,this)
       this.g.setTransform(1,0,0,1,0,0); this.g.clearRect(0,0,this.c.width,this.c.height)
       for(const r of this.renderables) r.render?.(this.g,this)
       requestAnimationFrame(this.loop)}
   }
-  start(){this._run=true; requestAnimationFrame(this.loop)} stop(){this._run=false}
+  start(){if(this._run) return; this._run=true; this.last=0; requestAnimationFrame(this.loop)} stop(){this._run=false}
 }
 
 /* ===========================
-   Iso projection
+   Isometric projection
 =========================== */
-const TILE_W=64, TILE_H=32
-function isoToScreen(ix,iy,iz=0){return {x:(ix-iy)*(TILE_W/2), y:(ix+iy)*(TILE_H/2) - iz*24}}
+const TILE_W=64, TILE_H=32, Z_PX=22
+const MAP_W=64, MAP_H=48
+function isoToScreen(ix,iy,iz=0){return {x:(ix-iy)*(TILE_W/2), y:(ix+iy)*(TILE_H/2) - iz*Z_PX}}
 function screenToIso(sx,sy){return {x:(sx/(TILE_W/2)+sy/(TILE_H/2))/2, y:(sy/(TILE_H/2)-sx/(TILE_W/2))/2}}
+function diamondPath(g,sx,sy,lift=0){g.beginPath(); g.moveTo(sx,sy-lift); g.lineTo(sx+TILE_W/2,sy+TILE_H/2-lift); g.lineTo(sx,sy+TILE_H-lift); g.lineTo(sx-TILE_W/2,sy+TILE_H/2-lift); g.closePath()}
 
 /* ===========================
-   Procedural textures
+   Districts
+=========================== */
+const DISTRICTS={
+  harbour:{id:'harbour', name:'Harbour Ring', sub:'Deck one · brass catwalks and the dark beacon', rect:{x:2,y:14,w:26,h:22}, rooms:5,
+    base:'steel', interior:['glass','brass','circuit','rust','steel'], wall:{face:'#2a3642',faceLo:'#1b252e',top:'#3b4a58',trim:'#39ffb8',window:'#9ef0ff'}, ambient:0.58},
+  foundry:{id:'foundry', name:'Foundry Deck', sub:'Deck two · furnaces, coolant and scuttlers', rect:{x:34,y:2,w:28,h:20}, rooms:4,
+    base:'grate', interior:['rust','forge','brass','grate','steel'], wall:{face:'#3a2c24',faceLo:'#241a15',top:'#4d3a2c',trim:'#ff8c42',window:'#ffb15c'}, ambient:0.5},
+  gardens:{id:'gardens', name:'Observatory Gardens', sub:'Deck three · glass houses and starlight', rect:{x:34,y:27,w:28,h:19}, rooms:4,
+    base:'glass', interior:['moss','neon','glass','circuit','moss'], wall:{face:'#23324a',faceLo:'#151f30',top:'#34486a',trim:'#c58cff',window:'#d9c2ff'}, ambient:0.56}
+}
+const BRIDGES=[
+  {from:'harbour',to:'foundry', y:18, x0:27, x1:34, gate:false},
+  {from:'harbour',to:'gardens', y:31, x0:27, x1:34, gate:true}
+]
+
+/* ===========================
+   Procedural tile textures
 =========================== */
 function makeTileFactory(seed){
   const rng=sfc32(...hashStrToSeed(seed+'tiles')), noise=makeNoise(rng,64,3)
-  const colors={ steel:'#1e2a33', steelLo:'#0f161c', brass:'#5a4a2f', brassHi:'#8b6a33',
-    glass:'#113342', glassHi:'#1a4e66', mint:'#2cffb2', circuit:'#243847', wire:'#80ffd4', rustLo:'#3c2424', wall:'#2a3238'}
   function pat(painter){const s=64, off=document.createElement('canvas'); off.width=off.height=s; const gg=off.getContext('2d'); painter(gg,s); return gg.createPattern(off,'repeat')}
-  const steel=pat((gg,s)=>{gg.fillStyle=colors.steel; gg.fillRect(0,0,s,s);
-    for(let y=0;y<s;y++)for(let x=0;x<s;x++){const v=noise(x*1.1,y*1.1); gg.fillStyle=`rgba(255,255,255,${v*0.06})`; gg.fillRect(x,y,1,1)}
-    gg.strokeStyle=colors.steelLo; gg.lineWidth=2; gg.beginPath(); gg.moveTo(0,s/2); gg.lineTo(s,s/2); gg.stroke()})
-  const brass=pat((gg,s)=>{gg.fillStyle=colors.brass; gg.fillRect(0,0,s,s); gg.strokeStyle=colors.brassHi; gg.lineWidth=1.5; for(let y=8;y<s;y+=16){gg.beginPath(); gg.moveTo(0,y); gg.lineTo(s,y); gg.stroke()}})
-  const glass=pat((gg,s)=>{gg.fillStyle=colors.glass; gg.fillRect(0,0,s,s); gg.strokeStyle=colors.glassHi; gg.strokeRect(6,6,s-12,s-12)})
-  const neon=pat((gg,s)=>{gg.fillStyle='#0a0f14'; gg.fillRect(0,0,s,s);
-    gg.strokeStyle='#1abf83'; gg.lineWidth=1; for(let i=0;i<s;i+=8){gg.beginPath(); gg.moveTo(0,i); gg.lineTo(s,i); gg.stroke(); gg.beginPath(); gg.moveTo(i,0); gg.lineTo(i,s); gg.stroke()}
-    for(let i=0;i<24;i++){gg.fillStyle=`rgba(44,255,178,${0.2+0.4*Math.random()})`; gg.fillRect((Math.random()*s)|0,(Math.random()*s)|0,1,1)}})
-  const circuit=pat((gg,s)=>{gg.fillStyle=colors.circuit; gg.fillRect(0,0,s,s); gg.strokeStyle=colors.wire; gg.lineWidth=1
-    for(let i=0;i<6;i++){const y=(i+1)*s/7; gg.beginPath(); gg.moveTo(0,y); gg.lineTo(s,y); gg.stroke()
-      const x=(i+1)*s/7; gg.beginPath(); gg.moveTo(x,0); gg.lineTo(x,s); gg.stroke()}})
-  const rust=pat((gg,s)=>{gg.fillStyle=colors.rustLo; gg.fillRect(0,0,s,s);
-    for(let y=0;y<s;y++)for(let x=0;x<s;x++){const v=noise(x*1.6,y*1.6); gg.fillStyle=`rgba(${90+v*80},${60+v*40},${60+v*40},${0.16+v*0.12})`; gg.fillRect(x,y,1,1)}})
-  const wall=pat((gg,s)=>{gg.fillStyle=colors.wall; gg.fillRect(0,0,s,s); gg.strokeStyle='#111'; gg.strokeRect(6,6,s-12,s-12)})
-  function drawDiamond(g,sx,sy,h,face){
-    const w=TILE_W, hh=TILE_H
-    g.save()
-    g.beginPath()
-    g.moveTo(sx, sy - h)
-    g.lineTo(sx + w/2, sy + hh/2 - h)
-    g.lineTo(sx, sy + hh - h)
-    g.lineTo(sx - w/2, sy + hh/2 - h)
-    g.closePath()
-    g.fillStyle=face; g.fill()
-    g.fillStyle='rgba(0,0,0,0.22)'
-    g.beginPath()
-    g.moveTo(sx - w/2, sy + hh/2 - h)
-    g.lineTo(sx - w/2, sy + hh/2)
-    g.lineTo(sx, sy + hh)
-    g.lineTo(sx, sy + hh - h)
-    g.closePath(); g.fill()
-    g.beginPath()
-    g.moveTo(sx + w/2, sy + hh/2 - h)
-    g.lineTo(sx + w/2, sy + hh/2)
-    g.lineTo(sx, sy + hh)
-    g.lineTo(sx, sy + hh - h)
-    g.closePath(); g.fill()
-    g.restore()
-  }
-  return {faces:{steel,brass,glass,neon,circuit,rust,wall}, drawDiamond}
+  function grain(gg,s,scale,alpha){for(let y=0;y<s;y++)for(let x=0;x<s;x++){const v=noise(x*scale,y*scale); gg.fillStyle=`rgba(255,255,255,${v*alpha})`; gg.fillRect(x,y,1,1)}}
+  const steel=pat((gg,s)=>{gg.fillStyle='#1f2b35'; gg.fillRect(0,0,s,s); grain(gg,s,1.1,0.07)
+    gg.strokeStyle='#121b22'; gg.lineWidth=2; gg.beginPath(); gg.moveTo(0,s/2); gg.lineTo(s,s/2); gg.moveTo(s/2,0); gg.lineTo(s/2,s); gg.stroke()
+    gg.fillStyle='#39485a'; for(const [x,y] of [[6,6],[s-8,6],[6,s-8],[s-8,s-8]]) gg.fillRect(x,y,2,2)})
+  const brass=pat((gg,s)=>{gg.fillStyle='#5c4a2c'; gg.fillRect(0,0,s,s); grain(gg,s,0.9,0.08)
+    gg.strokeStyle='#8c6b35'; gg.lineWidth=1.5; for(let y=6;y<s;y+=12){gg.beginPath(); gg.moveTo(0,y); gg.lineTo(s,y); gg.stroke()}
+    gg.strokeStyle='rgba(255,220,150,.18)'; for(let y=8;y<s;y+=12){gg.beginPath(); gg.moveTo(0,y); gg.lineTo(s,y); gg.stroke()}})
+  const glass=pat((gg,s)=>{gg.fillStyle='#10303f'; gg.fillRect(0,0,s,s); gg.strokeStyle='#1b5168'; gg.lineWidth=1.5; gg.strokeRect(5,5,s-10,s-10)
+    const grd=gg.createLinearGradient(0,0,s,s); grd.addColorStop(0,'rgba(180,240,255,.16)'); grd.addColorStop(.5,'rgba(180,240,255,0)'); grd.addColorStop(1,'rgba(180,240,255,.1)'); gg.fillStyle=grd; gg.fillRect(0,0,s,s)})
+  const neon=pat((gg,s)=>{gg.fillStyle='#0a0f14'; gg.fillRect(0,0,s,s)
+    gg.strokeStyle='#1a8a63'; gg.lineWidth=1; for(let i=0;i<s;i+=8){gg.beginPath(); gg.moveTo(0,i); gg.lineTo(s,i); gg.stroke(); gg.beginPath(); gg.moveTo(i,0); gg.lineTo(i,s); gg.stroke()}
+    for(let i=0;i<24;i++){gg.fillStyle=`rgba(44,255,178,${0.25+0.5*rng()})`; gg.fillRect((rng()*s)|0,(rng()*s)|0,2,2)}})
+  const circuit=pat((gg,s)=>{gg.fillStyle='#243847'; gg.fillRect(0,0,s,s); gg.strokeStyle='#5fd9b4'; gg.lineWidth=1
+    for(let i=0;i<5;i++){const y=(i+1)*s/6, x=(i+1)*s/6; gg.beginPath(); gg.moveTo(0,y); gg.lineTo(s*0.4,y); gg.lineTo(s*0.4,y+6); gg.lineTo(s,y+6); gg.stroke(); gg.beginPath(); gg.moveTo(x,0); gg.lineTo(x,s*0.3); gg.stroke()}
+    for(let i=0;i<10;i++){gg.fillStyle='#9fffe0'; gg.fillRect((rng()*s)|0,(rng()*s)|0,2,2)}})
+  const rust=pat((gg,s)=>{gg.fillStyle='#3a2322'; gg.fillRect(0,0,s,s);
+    for(let y=0;y<s;y++)for(let x=0;x<s;x++){const v=noise(x*1.6,y*1.6); gg.fillStyle=`rgba(${110+v*90},${60+v*40},${40+v*30},${0.2+v*0.2})`; gg.fillRect(x,y,1,1)}})
+  const grate=pat((gg,s)=>{gg.fillStyle='#1a1d20'; gg.fillRect(0,0,s,s); gg.fillStyle='#0b0d0f'; for(let y=4;y<s;y+=8)for(let x=4;x<s;x+=8) gg.fillRect(x,y,4,4)
+    gg.strokeStyle='rgba(255,140,60,.08)'; gg.lineWidth=1; gg.strokeRect(0.5,0.5,s-1,s-1)})
+  const forge=pat((gg,s)=>{gg.fillStyle='#2b1a14'; gg.fillRect(0,0,s,s);
+    for(let y=0;y<s;y++)for(let x=0;x<s;x++){const v=noise(x*2.2,y*2.2); if(v>0.56){gg.fillStyle=`rgba(255,${90+v*110},30,${(v-0.5)*1.6})`; gg.fillRect(x,y,1,1)}}
+    gg.strokeStyle='#4a2a1c'; gg.lineWidth=2; gg.beginPath(); gg.moveTo(0,s/2); gg.lineTo(s,s/2); gg.moveTo(s/2,0); gg.lineTo(s/2,s); gg.stroke()})
+  const moss=pat((gg,s)=>{gg.fillStyle='#1b3a2a'; gg.fillRect(0,0,s,s);
+    for(let y=0;y<s;y++)for(let x=0;x<s;x++){const v=noise(x*1.3,y*1.3); gg.fillStyle=`rgba(${40+v*60},${120+v*90},${70+v*40},${0.18+v*0.2})`; gg.fillRect(x,y,1,1)}
+    for(let i=0;i<9;i++){gg.fillStyle='rgba(200,255,220,.5)'; const x=(rng()*s)|0,y=(rng()*s)|0; gg.fillRect(x,y,1,1); gg.fillRect(x+1,y,1,1)}})
+  const bridge=pat((gg,s)=>{gg.fillStyle='#4a3b22'; gg.fillRect(0,0,s,s); grain(gg,s,1.2,0.1)
+    gg.strokeStyle='#2a2113'; gg.lineWidth=2; for(let y=0;y<s;y+=8){gg.beginPath(); gg.moveTo(0,y); gg.lineTo(s,y); gg.stroke()}
+    gg.fillStyle='#8c6b35'; for(let y=3;y<s;y+=8){gg.fillRect(10,y,2,2); gg.fillRect(s-12,y,2,2)}})
+  const wall=pat((gg,s)=>{gg.fillStyle='#2a3238'; gg.fillRect(0,0,s,s); gg.strokeStyle='#111'; gg.strokeRect(6,6,s-12,s-12)})
+  return {faces:{steel,brass,glass,neon,circuit,rust,grate,forge,moss,bridge,wall,rail:wall}, noise}
 }
 
 /* ===========================
-   World (buildings + corridors + walls)
+   World generation: three platforms, bridges, buildings
 =========================== */
 class IsoMap{
-  constructor(w,h,seed){this.w=w; this.h=h; this.seed=seed; this.tiles=new Array(w*h); this.discovered=new Uint8Array(w*h)
-    this.rng=sfc32(...hashStrToSeed(seed+'map')); this.noise=makeNoise(this.rng,64,4); this.factory=makeTileFactory(seed)}
+  constructor(seed){this.w=MAP_W; this.h=MAP_H; this.seed=seed; this.tiles=new Array(this.w*this.h); this.discovered=new Uint8Array(this.w*this.h); this.light=new Float32Array(this.w*this.h)
+    this.rng=sfc32(...hashStrToSeed(seed+'map')); this.noise=makeNoise(this.rng,64,4); this.factory=makeTileFactory(seed); this.rooms={}; this.walkableCount=0}
   idx(x,y){return y*this.w+x} inBounds(x,y){return x>=0&&y>=0&&x<this.w&&y<this.h}
-  at(x,y){return this.tiles[this.idx(x,y)]}
+  at(x,y){return this.inBounds(x,y)?this.tiles[this.idx(x,y)]:null}
+  set(x,y,props){const t=this.at(x,y); if(t) Object.assign(t,props); return t}
+  districtAt(x,y){const t=this.at(x,y); return t?t.district:null}
 
   generate(){
-    // 1) Base fill as steel, walkable
-    for(let y=0;y<this.h;y++)for(let x=0;x<this.w;x++){
-      this.tiles[this.idx(x,y)]={x,y,type:'steel',height:0,walkable:true}
-    }
-    // 2) Place themed buildings (rectangles) and corridors
-    const rooms=[]
-    const roomCount=6
     const rng=this.rng
-    function rect(x,y,w,h){return {x,y,w,h}}
-    // random rooms with bounds
-    for(let i=0;i<roomCount;i++){
-      const rw = 6 + (rng()*6)|0
-      const rh = 5 + (rng()*6)|0
-      const rx = 2 + (rng()*(32-rw-4))|0
-      const ry = 2 + (rng()*(32-rh-4))|0
-      rooms.push(rect(rx,ry,rw,rh))
+    for(let y=0;y<this.h;y++)for(let x=0;x<this.w;x++) this.tiles[this.idx(x,y)]={x,y,type:'void',height:0,walkable:false,district:null,lit:0}
+    // 1) Platforms with perimeter rails
+    for(const d of Object.values(DISTRICTS)){
+      const r=d.rect
+      for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++){
+        const edge=(x===r.x||y===r.y||x===r.x+r.w-1||y===r.y+r.h-1)
+        this.set(x,y, edge?{type:'rail',walkable:false,height:0.45,district:d.id}:{type:d.base,walkable:true,height:0,district:d.id})
+      }
+      // soften the base with the occasional accent strip
+      for(let y=r.y+1;y<r.y+r.h-1;y++)for(let x=r.x+1;x<r.x+r.w-1;x++){
+        const n=this.noise(x*0.21+7,y*0.21+3)
+        if(n>0.72) this.set(x,y,{type:d.id==='harbour'?'brass':d.id==='foundry'?'rust':'moss'})
+      }
     }
-    // carve rooms: interior themed floors, perimeter walls (non-walkable)
-    for(const r of rooms){
-      for(let y=r.y; y<r.y+r.h; y++){
-        for(let x=r.x; x<r.x+r.w; x++){
-          const t=this.at(x,y)
-          // perimeter walls
-          if(x===r.x || y===r.y || x===r.x+r.w-1 || y===r.y+r.h-1){
-            t.type='wall'; t.walkable=false; t.height=1
-          }else{
-            // interior themed floors with variety
-            const n=this.noise(x*0.25,y*0.25)
-            t.type = n>0.75?'glass' : n>0.55?'brass' : n>0.35?'circuit' : n>0.2?'rust':'steel'
-            t.walkable=true
-          }
+    // 2) Bridges (five wide: rails either side, three walkable planks)
+    for(const b of BRIDGES){
+      for(let x=b.x0;x<=b.x1;x++){
+        for(let dy=-2;dy<=2;dy++){
+          const y=b.y+dy
+          const isRail=Math.abs(dy)===2
+          const onPlatform=(x===b.x0||x===b.x1)
+          if(onPlatform && isRail) continue
+          this.set(x,y, isRail?{type:'rail',walkable:false,height:0.45,district:'bridge'}:{type:'bridge',walkable:true,height:0,district:onPlatform?this.at(x,y).district:'bridge'})
         }
       }
-      // carve a door in each room wall
-      const doorSide=((rng()*4)|0)
-      let dx=r.x+1+(rng()*(r.w-2)|0), dy=r.y
-      if(doorSide===0){dx=r.x+1+(rng()*(r.w-2)|0); dy=r.y}         // top
-      if(doorSide===1){dx=r.x+1+(rng()*(r.w-2)|0); dy=r.y+r.h-1}   // bottom
-      if(doorSide===2){dx=r.x; dy=r.y+1+(rng()*(r.h-2)|0)}         // left
-      if(doorSide===3){dx=r.x+r.w-1; dy=r.y+1+(rng()*(r.h-2)|0)}   // right
-      const dt=this.at(dx,dy); dt.type='steel'; dt.walkable=true; dt.height=0; // doorway
     }
-    // 3) Corridors connecting room centers with L-shapes (steel)
-    const centers=rooms.map(r=>({x:(r.x+r.x+r.w-1)/2|0, y:(r.y+r.y+r.h-1)/2|0}))
-    centers.sort((a,b)=>a.x+b.y-(b.x+a.y))
-    for(let i=0;i<centers.length-1;i++){
-      const a=centers[i], b=centers[i+1]
-      for(let x=Math.min(a.x,b.x); x<=Math.max(a.x,b.x); x++){ const t=this.at(x,a.y); t.type='steel'; t.walkable=true }
-      for(let y=Math.min(a.y,b.y); y<=Math.max(a.y,b.y); y++){ const t=this.at(b.x,y); t.type='steel'; t.walkable=true }
+    // 3) Buildings within each platform (non-overlapping, inset from the rails)
+    for(const d of Object.values(DISTRICTS)){
+      const r=d.rect, rooms=[]
+      let guard=0
+      while(rooms.length<d.rooms && guard++<3000){
+        const rw=5+((rng()*4)|0), rh=4+((rng()*4)|0)
+        const rx=r.x+2+((rng()*(r.w-rw-4))|0), ry=r.y+2+((rng()*(r.h-rh-4))|0)
+        const cand={x:rx,y:ry,w:rw,h:rh}
+        if(rooms.some(o=>!(cand.x+cand.w+1<o.x||o.x+o.w+1<cand.x||cand.y+cand.h+1<o.y||o.y+o.h+1<cand.y))) continue
+        // keep bridge mouths clear
+        if(BRIDGES.some(b=>Math.abs((cand.y+cand.h/2)-b.y)<cand.h/2+4 && (Math.abs(cand.x-r.x)<3||Math.abs(cand.x+cand.w-(r.x+r.w))<3))) continue
+        rooms.push(cand)
+      }
+      rooms.forEach((rm,i)=>{
+        const theme=d.interior[i%d.interior.length]
+        for(let y=rm.y;y<rm.y+rm.h;y++)for(let x=rm.x;x<rm.x+rm.w;x++){
+          const edge=(x===rm.x||y===rm.y||x===rm.x+rm.w-1||y===rm.y+rm.h-1)
+          if(edge) this.set(x,y,{type:'wall',walkable:false,height:2,district:d.id})
+          else{ const n=this.noise(x*0.5,y*0.5); this.set(x,y,{type:n>0.6?theme:(n>0.3?d.interior[(i+1)%d.interior.length]:d.base),walkable:true,height:0,district:d.id,room:true}) }
+        }
+        // two doors on different sides (south-facing and one other), so rooms read as buildings with entrances
+        const doors=[]
+        const side=(rng()*2)|0
+        doors.push({x:rm.x+1+((rng()*(rm.w-2))|0), y:rm.y+rm.h-1})
+        doors.push(side===0?{x:rm.x+rm.w-1, y:rm.y+1+((rng()*(rm.h-2))|0)}:{x:rm.x+1+((rng()*(rm.w-2))|0), y:rm.y})
+        for(const dr of doors){ this.set(dr.x,dr.y,{type:'brass',walkable:true,height:0,door:true}) }
+        rm.doors=doors; rm.cx=rm.x+(rm.w>>1); rm.cy=rm.y+(rm.h>>1); rm.theme=theme
+      })
+      // walkways: paint a brass path from each south door down to the platform midline
+      for(const rm of rooms){ const dr=rm.doors[0]; for(let y=dr.y+1;y<Math.min(dr.y+4,r.y+r.h-1);y++){ const t=this.at(dr.x,y); if(t&&t.walkable&&t.type===d.base) t.type=d.id==='harbour'?'brass':d.id==='foundry'?'grate':'circuit' } }
+      this.rooms[d.id]=rooms
     }
-    // 4) Decorative exterior rails (walls) along edges in some places
-    for(let x=0;x<this.w;x++){ const t=this.at(x,1); t.type='wall'; t.walkable=false; t.height=1 }
-    for(let x=0;x<this.w;x++){ const t=this.at(x,this.h-2); t.type='wall'; t.walkable=false; t.height=1 }
+    // 4) Static light: ambient per district, glow from emissive floors
+    for(let y=0;y<this.h;y++)for(let x=0;x<this.w;x++){
+      const t=this.at(x,y); if(t.type==='void') continue
+      const d=DISTRICTS[t.district]; t.lit=d?d.ambient:0.6
+      if(t.walkable) this.walkableCount++
+    }
+    for(let y=0;y<this.h;y++)for(let x=0;x<this.w;x++){
+      const t=this.at(x,y); if(t.type==='neon'||t.type==='forge'||t.type==='circuit') this.addLight(x,y,t.type==='forge'?2.5:2,0.22)
+    }
+    // 5) Platform edge drop faces (precomputed)
+    for(let y=0;y<this.h;y++)for(let x=0;x<this.w;x++){
+      const t=this.at(x,y); if(t.type==='void') continue
+      const sw=this.at(x,y+1), se=this.at(x+1,y)
+      t.dropL=!sw||sw.type==='void'; t.dropR=!se||se.type==='void'
+    }
   }
-
+  addLight(cx,cy,r,strength){for(let y=cy-r|0;y<=cy+r;y++)for(let x=cx-r|0;x<=cx+r;x++){const t=this.at(x,y); if(!t||t.type==='void') continue; const d=dist(x,y,cx,cy); if(d<=r) t.lit=Math.min(1.15,t.lit+strength*(1-d/r))}}
   reveal(cx,cy,r=3){for(let y=cy-r;y<=cy+r;y++)for(let x=cx-r;x<=cx+r;x++) if(this.inBounds(x,y)&&((x-cx)*(x-cx)+(y-cy)*(y-cy)<=r*r)) this.discovered[this.idx(x,y)]=1}
-  isDiscovered(x,y){return this.discovered[this.idx(x,y)]===1}
-}
-
-/* ===========================
-   Sprite factory (simple anim)
-=========================== */
-function makeSpriteFactory(){
-  function mk(frames, paint){
-    const list=[]
-    for(let i=0;i<frames;i++){
-      const c=document.createElement('canvas'); c.width=48; c.height=48; const g=c.getContext('2d')
-      paint(g, i, frames, c.width, c.height); list.push(c)
+  isDiscovered(x,y){return this.inBounds(x,y)&&this.discovered[this.idx(x,y)]===1}
+  discoveredWalkable(){let n=0; for(let i=0;i<this.tiles.length;i++) if(this.discovered[i]&&this.tiles[i].walkable) n++; return n}
+  /* Nearest walkable tile to a target, optionally restricted to a district */
+  floorNear(x0,y0,r=6,district=null,openOnly=false){
+    let best=null, bd=1e9
+    for(let y=Math.max(0,y0-r);y<=Math.min(this.h-1,y0+r);y++)for(let x=Math.max(0,x0-r);x<=Math.min(this.w-1,x0+r);x++){
+      const t=this.at(x,y); if(!t.walkable||t.door||(openOnly&&t.room)) continue; if(district&&t.district!==district) continue
+      const d=(x-x0)*(x-x0)+(y-y0)*(y-y0); if(d<bd){bd=d; best={x,y}}
     }
-    return list
+    return best||{x:x0,y:y0}
   }
-  const playerFrames = mk(6,(g,i,frames,w,h)=>{
-    g.clearRect(0,0,w,h); const cx=w/2, cy=h/2+6
-    g.fillStyle='rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(cx,cy+14,14,7,0,0,Math.PI*2); g.fill()
-    const bob = Math.sin(i/frames*Math.PI*2)*2
-    g.fillStyle='#1fcf90'; g.beginPath(); g.moveTo(cx,cy-18+bob); g.lineTo(cx+10,cy+bob); g.lineTo(cx,cy+18+bob); g.lineTo(cx-10,cy+bob); g.closePath(); g.fill()
-    const a=0.6+0.4*Math.sin(i/frames*Math.PI*2)
-    g.fillStyle=`rgba(233,255,248,${a})`; g.fillRect(cx-4,cy-8+bob,8,3)
-  })
-  const droneFrames = mk(8,(g,i,frames,w,h)=>{
-    g.clearRect(0,0,w,h); const cx=w/2, cy=h/2+4
-    g.fillStyle='rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(cx,cy+14,12,6,0,0,Math.PI*2); g.fill()
-    g.fillStyle='#7cc9c2'; g.beginPath(); g.ellipse(cx,cy-4,18,12,0,0,Math.PI*2); g.fill()
-    g.save(); g.translate(cx,cy-4); g.rotate((i/frames)*Math.PI*2); g.fillStyle='#354950'; g.fillRect(-18,-2,36,4); g.fillRect(-2,-18,4,36); g.restore()
-    const blink = (i%frames)<1?0.2:1
-    g.fillStyle=`rgba(255,105,97,${blink})`; g.fillRect(cx-2,cy-7,4,3)
-  })
-  const shardFrames = mk(8,(g,i,frames,w,h)=>{
-    g.clearRect(0,0,w,h); const cx=w/2, cy=h/2
-    const ang = (i/frames)*Math.PI*2
-    g.save(); g.translate(cx,cy-6); g.rotate(ang)
-    g.fillStyle='#e6fffb'; g.beginPath(); g.moveTo(0,-6); g.lineTo(5,0); g.lineTo(0,6); g.lineTo(-5,0); g.closePath(); g.fill()
-    g.strokeStyle='#39ffb8'; g.stroke(); g.restore()
-    g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(cx,cy+10,8,4,0,0,Math.PI*2); g.fill()
-  })
-  return {playerFrames, droneFrames, shardFrames}
+  randomFloor(rng,district,avoid=[],minD=3){
+    const r=DISTRICTS[district].rect
+    for(let tries=0;tries<400;tries++){
+      const x=r.x+1+((rng()*(r.w-2))|0), y=r.y+1+((rng()*(r.h-2))|0)
+      const t=this.at(x,y); if(!t.walkable||t.door||t.district!==district) continue
+      if(avoid.some(a=>dist(a.x,a.y,x,y)<minD)) continue
+      return {x,y}
+    }
+    return this.floorNear(r.x+r.w/2|0,r.y+r.h/2|0,10,district)
+  }
+  /* BFS reachability over walkable tiles, treating `blocked` tile keys as walls */
+  reachableFrom(sx,sy,blocked=new Set()){
+    const seen=new Uint8Array(this.w*this.h), q=[[sx,sy]], out=[]
+    seen[this.idx(sx,sy)]=1
+    while(q.length){
+      const [x,y]=q.shift(); out.push({x,y})
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const nx=x+dx, ny=y+dy; if(!this.inBounds(nx,ny)) continue
+        const i=this.idx(nx,ny); if(seen[i]) continue
+        const t=this.tiles[i]; if(!t.walkable||blocked.has(nx+','+ny)) continue
+        seen[i]=1; q.push([nx,ny])
+      }
+    }
+    return out
+  }
 }
 
 /* ===========================
-   Entities & collisions
+   Art: parallax cloud sea
+=========================== */
+function makeCloudLayer(rng, w, h, puffs, tint, alpha, stretch){
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d')
+  for(let i=0;i<puffs;i++){
+    const x=rng()*w, y=rng()*h, r=30+rng()*90
+    for(const [ox,oy] of [[0,0],[w,0],[-w,0],[0,h],[0,-h],[w,h],[-w,-h],[w,-h],[-w,h]]){
+      const grd=g.createRadialGradient(x+ox,y+oy,0,x+ox,y+oy,r)
+      grd.addColorStop(0,`rgba(${tint},${alpha})`); grd.addColorStop(0.55,`rgba(${tint},${alpha*0.45})`); grd.addColorStop(1,`rgba(${tint},0)`)
+      g.fillStyle=grd; g.save(); g.translate(x+ox,y+oy); g.scale(stretch,1); g.translate(-(x+ox),-(y+oy)); g.beginPath(); g.arc(x+ox,y+oy,r,0,Math.PI*2); g.fill(); g.restore()
+    }
+  }
+  return c
+}
+function makeSky(seed){
+  const rng=sfc32(...hashStrToSeed(seed+'sky'))
+  const far=makeCloudLayer(rng,1024,512,26,'96,120,150',0.22,2.6)
+  const mid=makeCloudLayer(rng,1024,512,20,'150,170,195',0.28,2.2)
+  const near=makeCloudLayer(rng,1024,512,14,'205,214,228',0.34,1.9)
+  const layers=[{c:far,par:0.12,drift:6,scale:1.0},{c:mid,par:0.22,drift:14,scale:1.15},{c:near,par:0.36,drift:26,scale:1.35}]
+  return {
+    render(g,w,h,cam,t,glow=0){
+      const sky=g.createLinearGradient(0,0,0,h)
+      sky.addColorStop(0,'#0a1220'); sky.addColorStop(0.5,`rgb(${18+glow*40},${30+glow*70},${48+glow*60})`); sky.addColorStop(1,`rgb(${40+glow*60},${56+glow*90},${78+glow*70})`)
+      g.fillStyle=sky; g.fillRect(0,0,w,h)
+      // a low sun / moon haze towards the bottom right where the cloud sea meets the horizon
+      const hz=g.createRadialGradient(w*0.78,h*1.05,10,w*0.78,h*1.05,h*0.9)
+      hz.addColorStop(0,`rgba(255,${190+glow*40},140,${0.22+glow*0.3})`); hz.addColorStop(1,'rgba(255,190,140,0)')
+      g.fillStyle=hz; g.fillRect(0,0,w,h)
+      for(const L of layers){
+        const sw=L.c.width*L.scale, sh=L.c.height*L.scale
+        const ox=-((cam.x*L.par + t*L.drift) % sw), oy=-((cam.y*L.par*0.6) % sh)
+        g.globalAlpha=1
+        for(let y=oy-sh; y<h+sh; y+=sh) for(let x=ox-sw; x<w+sw; x+=sw) g.drawImage(L.c,x,y,sw,sh)
+      }
+      if(glow>0){ g.fillStyle=`rgba(120,255,210,${glow*0.18})`; g.fillRect(0,0,w,h) }
+    }
+  }
+}
+
+/* ===========================
+   Art: characters and creatures
+=========================== */
+function mkFrames(n,w,h,paint){const list=[]; for(let i=0;i<n;i++){const c=document.createElement('canvas'); c.width=w; c.height=h; paint(c.getContext('2d'),i,n,w,h); list.push(c)} return list}
+/* A small person: feet at (cx,cy). `ph` is the walk phase 0..1 (0 for idle). */
+function drawPerson(g,cx,cy,o,ph){
+  const swing=ph>0?Math.sin(ph*Math.PI*2):0, bob=ph>0?Math.abs(Math.cos(ph*Math.PI*2))*1.5:0
+  g.fillStyle='rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(cx,cy+1,10,4.5,0,0,Math.PI*2); g.fill()
+  // legs
+  g.fillStyle=o.trousers; g.fillRect(cx-5,cy-13-bob+swing*2,4,13-swing*2); g.fillRect(cx+1,cy-13-bob-swing*2,4,13+swing*2)
+  g.fillStyle=o.boots; g.fillRect(cx-6,cy-3+Math.max(0,swing*2),6,3); g.fillRect(cx,cy-3+Math.max(0,-swing*2),6,3)
+  // torso / coat
+  g.fillStyle=o.coat; g.fillRect(cx-7,cy-27-bob,14,15)
+  if(o.coatLo){g.fillStyle=o.coatLo; g.fillRect(cx-7,cy-18-bob,14,6)}
+  // arms
+  g.fillStyle=o.coat; g.fillRect(cx-10,cy-26-bob-swing*1.5,3,11); g.fillRect(cx+7,cy-26-bob+swing*1.5,3,11)
+  g.fillStyle=o.skin; g.fillRect(cx-10,cy-15-bob-swing*1.5,3,3); g.fillRect(cx+7,cy-15-bob+swing*1.5,3,3)
+  // strap / satchel / accent
+  if(o.strap){g.fillStyle=o.strap; g.beginPath(); g.moveTo(cx-6,cy-27-bob); g.lineTo(cx+7,cy-16-bob); g.lineTo(cx+7,cy-13-bob); g.lineTo(cx-6,cy-24-bob); g.closePath(); g.fill(); g.fillRect(cx+3,cy-17-bob,6,6)}
+  if(o.badge){g.fillStyle=o.badge; g.fillRect(cx-5,cy-24-bob,3,3)}
+  // head
+  g.fillStyle=o.skin; g.fillRect(cx-4,cy-35-bob,8,8)
+  if(o.helmet){g.fillStyle=o.helmet; g.fillRect(cx-6,cy-38-bob,12,8); g.fillStyle=o.visor; g.fillRect(cx-5,cy-33-bob,10,3)}
+  else{ g.fillStyle=o.hair; g.fillRect(cx-5,cy-37-bob,10,4); if(o.cap){g.fillStyle=o.cap; g.fillRect(cx-6,cy-39-bob,12,4); g.fillRect(cx-7,cy-36-bob,14,1)} }
+  if(o.goggles){g.fillStyle=o.goggles; g.fillRect(cx-5,cy-33-bob,4,3); g.fillRect(cx+1,cy-33-bob,4,3)}
+}
+function makeSpriteFactory(){
+  const W=48,H=56
+  const courier={trousers:'#1b2b36',boots:'#0d1418',coat:'#1fa884',coatLo:'#157a60',skin:'#e6c39c',strap:'#c08a3c',helmet:'#15202a',visor:'#7cf7ff',badge:'#ffd45e'}
+  const playerWalk=mkFrames(8,W,H,(g,i,n)=>drawPerson(g,W/2,H-6,courier,(i+0.5)/n))
+  const playerIdle=mkFrames(1,W,H,(g)=>drawPerson(g,W/2,H-6,courier,0))
+  const people={
+    chief:{trousers:'#1a2740',boots:'#0d1418',coat:'#243f6e',coatLo:'#1a2d50',skin:'#c99a72',hair:'#4c4c4c',cap:'#172a4a',badge:'#d7a74a'},
+    foreman:{trousers:'#3a3a3a',boots:'#1a1410',coat:'#ff8c42',coatLo:'#b35b22',skin:'#8a5a3a',hair:'#222',goggles:'#5bd0ff'},
+    archivist:{trousers:'#2b1f4a',boots:'#15102a',coat:'#5a3f9a',coatLo:'#3e2a70',skin:'#f0d2b8',hair:'#e8e8f0',goggles:'#c58cff'},
+    quartermaster:{trousers:'#2f3a2a',boots:'#1a1a12',coat:'#3f6a3b',coatLo:'#2b4a28',skin:'#d8a984',hair:'#8a4a2a',badge:'#ffd45e'}
+  }
+  const npc={}; for(const k in people) npc[k]=mkFrames(2,W,H,(g,i)=>drawPerson(g,W/2,H-6-i,people[k],0))
+  const drone=mkFrames(8,W,H,(g,i,n,w,h)=>{
+    const cx=w/2, cy=h/2+6
+    g.fillStyle='#4e6b72'; g.beginPath(); g.ellipse(cx,cy-2,17,10,0,0,Math.PI*2); g.fill()
+    g.fillStyle='#7cc9c2'; g.beginPath(); g.ellipse(cx,cy-5,17,9,0,0,Math.PI*2); g.fill()
+    g.fillStyle='#a9ecec'; g.beginPath(); g.ellipse(cx-4,cy-8,6,3,0,0,Math.PI*2); g.fill()
+    g.save(); g.translate(cx,cy-9); g.rotate((i/n)*Math.PI); g.fillStyle='rgba(40,60,66,.85)'; g.fillRect(-22,-1.5,44,3); g.fillRect(-1.5,-22,3,44); g.restore()
+    g.fillStyle='rgba(180,240,240,.25)'; g.beginPath(); g.ellipse(cx,cy-9,22,5,0,0,Math.PI*2); g.fill()
+    g.fillStyle=i===0?'rgba(255,105,97,.3)':'#ff5f5a'; g.fillRect(cx-3,cy-5,6,3)
+    g.fillStyle='#2a3b40'; g.fillRect(cx-6,cy+4,3,5); g.fillRect(cx+3,cy+4,3,5)
+  })
+  const scuttler=mkFrames(8,W,H,(g,i,n,w,h)=>{
+    const cx=w/2, cy=h-14, ph=i/n
+    g.fillStyle='rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(cx,cy+3,15,5,0,0,Math.PI*2); g.fill()
+    g.strokeStyle='#5a3a24'; g.lineWidth=2.5; g.lineCap='round'
+    for(let s=-1;s<=1;s+=2) for(let k=0;k<3;k++){
+      const a=Math.sin((ph+k/3)*Math.PI*2)*4
+      const bx=cx+s*6, by=cy-6+k*3
+      g.beginPath(); g.moveTo(bx,by); g.lineTo(bx+s*11,by-5+a); g.lineTo(bx+s*15,by+5); g.stroke()
+    }
+    g.fillStyle='#8a4a22'; g.beginPath(); g.ellipse(cx,cy-6,12,8,0,0,Math.PI*2); g.fill()
+    g.fillStyle='#b8652f'; g.beginPath(); g.ellipse(cx,cy-9,9,5,0,0,Math.PI*2); g.fill()
+    g.fillStyle='#3a2414'; for(let k=-1;k<=1;k++) g.fillRect(cx+k*6-1,cy-13,2,8)
+    g.fillStyle='#ffd45e'; g.fillRect(cx-7,cy-9,3,2); g.fillRect(cx+4,cy-9,3,2)
+  })
+  const shard=mkFrames(8,W,H,(g,i,n,w,h)=>{
+    const cx=w/2, cy=h/2+4, ang=(i/n)*Math.PI*2, bob=Math.sin(ang)*2
+    g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(cx,cy+16,8,3.5,0,0,Math.PI*2); g.fill()
+    g.fillStyle='rgba(57,255,184,.18)'; g.beginPath(); g.arc(cx,cy+bob,11,0,Math.PI*2); g.fill()
+    g.save(); g.translate(cx,cy+bob); g.scale(Math.cos(ang)*0.8+0.2,1)
+    g.fillStyle='#e6fffb'; g.beginPath(); g.moveTo(0,-9); g.lineTo(6,0); g.lineTo(0,9); g.lineTo(-6,0); g.closePath(); g.fill()
+    g.strokeStyle='#39ffb8'; g.lineWidth=1.5; g.stroke(); g.restore()
+  })
+  const chart=mkFrames(8,W,H,(g,i,n,w,h)=>{
+    const cx=w/2, cy=h/2+4, bob=Math.sin((i/n)*Math.PI*2)*2
+    g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(cx,cy+16,8,3.5,0,0,Math.PI*2); g.fill()
+    g.fillStyle='rgba(197,140,255,.2)'; g.beginPath(); g.arc(cx,cy+bob,12,0,Math.PI*2); g.fill()
+    g.fillStyle='#efe6ff'; g.fillRect(cx-7,cy-9+bob,14,16); g.fillStyle='#5a3f9a'; g.fillRect(cx-7,cy-9+bob,14,2); g.fillRect(cx-7,cy+5+bob,14,2)
+    g.fillStyle='#c58cff'; for(const [x,y] of [[-3,-4],[2,-1],[-1,3],[4,2]]) g.fillRect(cx+x,cy+y+bob,1.5,1.5)
+  })
+  const lens=mkFrames(8,W,H,(g,i,n,w,h)=>{
+    const cx=w/2, cy=h/2+4, bob=Math.sin((i/n)*Math.PI*2)*2
+    g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(cx,cy+16,9,4,0,0,Math.PI*2); g.fill()
+    g.fillStyle='rgba(255,200,120,.22)'; g.beginPath(); g.arc(cx,cy+bob,14,0,Math.PI*2); g.fill()
+    g.strokeStyle='#d7a74a'; g.lineWidth=3; g.beginPath(); g.ellipse(cx,cy+bob,9,11,0,0,Math.PI*2); g.stroke()
+    g.fillStyle='rgba(180,240,255,.55)'; g.beginPath(); g.ellipse(cx,cy+bob,7,9,0,0,Math.PI*2); g.fill()
+    g.fillStyle='rgba(255,255,255,.8)'; g.beginPath(); g.ellipse(cx-2,cy-3+bob,2,3,0,0,Math.PI*2); g.fill()
+  })
+  return {playerWalk,playerIdle,npc,drone,scuttler,shard,chart,lens}
+}
+
+/* ===========================
+   Art: tile renderer (floors, walls, rails, drops)
+=========================== */
+function makeTileRenderer(map){
+  const faces=map.factory.faces
+  const hashXY=(x,y)=>((x*73856093)^(y*19349663))>>>0
+  /* Floors are pre-rendered once per type as diamond sprites; lighting is applied with a small
+     set of pre-rendered shade sprites, so the per-frame cost is two drawImage calls per tile. */
+  const sprite={}, shades=[], warms=[]
+  function diamondSprite(paint){const c=document.createElement('canvas'); c.width=TILE_W+2; c.height=TILE_H+2; const gg=c.getContext('2d'); gg.translate(1,1); diamondPath(gg,TILE_W/2,0); paint(gg); return c}
+  for(const type in faces) sprite[type]=diamondSprite(gg=>{gg.fillStyle=faces[type]; gg.fill(); gg.strokeStyle='rgba(0,0,0,.28)'; gg.lineWidth=1; gg.stroke()})
+  for(let k=0;k<=10;k++){ shades.push(diamondSprite(gg=>{gg.fillStyle=`rgba(4,8,14,${Math.min(0.85,k/10*0.85)})`; gg.fill()})); warms.push(diamondSprite(gg=>{gg.fillStyle=`rgba(255,235,190,${Math.min(0.35,k/10*0.5)})`; gg.fill()})) }
+  const doorSprite=diamondSprite(gg=>{gg.fillStyle='rgba(255,220,150,.12)'; gg.fill()})
+  function floor(g,t,sx,sy,b,time){
+    g.drawImage(sprite[t.type]||sprite.steel,sx-TILE_W/2-1,sy-1)
+    if(t.type==='forge'){ const f=0.25+0.15*Math.sin(time*3+t.x*1.7+t.y*0.9); diamondPath(g,sx,sy); g.fillStyle=`rgba(255,120,40,${f})`; g.fill() }
+    else if(t.type==='neon'){ const f=0.08+0.08*Math.sin(time*2+t.x); diamondPath(g,sx,sy); g.fillStyle=`rgba(57,255,184,${f})`; g.fill() }
+    if(t.door) g.drawImage(doorSprite,sx-TILE_W/2-1,sy-1)
+    if(b<1){ const k=Math.min(10,Math.round((1-b)*10)); if(k>0) g.drawImage(shades[k],sx-TILE_W/2-1,sy-1) }
+    else if(b>1){ const k=Math.min(10,Math.round((b-1)*10)); if(k>0) g.drawImage(warms[k],sx-TILE_W/2-1,sy-1) }
+  }
+  const dropCache={}
+  function dropGrads(g,d){
+    if(dropCache[d.id]) return dropCache[d.id]
+    const D=64
+    const L=g.createLinearGradient(0,TILE_H/2,0,TILE_H/2+D); L.addColorStop(0,d.wall.faceLo); L.addColorStop(0.6,'rgba(16,22,30,.85)'); L.addColorStop(1,'rgba(16,22,30,0)')
+    const R=g.createLinearGradient(0,TILE_H/2,0,TILE_H/2+D); R.addColorStop(0,d.wall.face); R.addColorStop(0.6,'rgba(20,28,36,.85)'); R.addColorStop(1,'rgba(20,28,36,0)')
+    return dropCache[d.id]={L,R,D}
+  }
+  function drop(g,t,sx,sy){
+    const d=DISTRICTS[t.district]||DISTRICTS.harbour, {L,R,D}=dropGrads(g,d)
+    g.save(); g.translate(sx,sy)
+    if(t.dropL){ g.fillStyle=L; g.beginPath(); g.moveTo(-TILE_W/2,TILE_H/2); g.lineTo(0,TILE_H); g.lineTo(0,TILE_H+D); g.lineTo(-TILE_W/2,TILE_H/2+D); g.closePath(); g.fill()
+      g.strokeStyle='rgba(215,167,74,.35)'; g.beginPath(); g.moveTo(-TILE_W/2,TILE_H/2+6); g.lineTo(0,TILE_H+6); g.stroke() }
+    if(t.dropR){ g.fillStyle=R; g.beginPath(); g.moveTo(TILE_W/2,TILE_H/2); g.lineTo(0,TILE_H); g.lineTo(0,TILE_H+D); g.lineTo(TILE_W/2,TILE_H/2+D); g.closePath(); g.fill()
+      g.strokeStyle='rgba(215,167,74,.35)'; g.beginPath(); g.moveTo(TILE_W/2,TILE_H/2+6); g.lineTo(0,TILE_H+6); g.stroke() }
+    g.restore()
+  }
+  /* Draw the two visible faces of a block using skew transforms; `lift` in px */
+  function block(g,sx,sy,lift,faceL,faceR,top,paintL,paintR){
+    g.save(); g.translate(sx-TILE_W/2,sy+TILE_H/2-lift); g.transform(1,0.5,0,1,0,0); g.fillStyle=faceL; g.fillRect(0,0,TILE_W/2,lift); paintL?.(g,TILE_W/2,lift); g.restore()
+    g.save(); g.translate(sx,sy+TILE_H-lift); g.transform(1,-0.5,0,1,0,0); g.fillStyle=faceR; g.fillRect(0,0,TILE_W/2,lift); paintR?.(g,TILE_W/2,lift); g.restore()
+    diamondPath(g,sx,sy,lift); g.fillStyle=top; g.fill(); g.strokeStyle='rgba(0,0,0,.35)'; g.stroke()
+  }
+  function wall(g,t,sx,sy,b,time){
+    const d=DISTRICTS[t.district]||DISTRICTS.harbour, w=d.wall, lift=t.height*Z_PX
+    const h=hashXY(t.x,t.y)
+    const windows=(gg,fw,fh,seed)=>{
+      gg.fillStyle='rgba(0,0,0,.25)'; gg.fillRect(0,fh-3,fw,3)
+      for(let k=0;k<2;k++){
+        const lit=((seed>>(k*3))&7)>2, flicker=lit&&((seed>>(k+9))&31)===0&&Math.sin(time*9+seed)>0.6
+        gg.fillStyle=lit&&!flicker?w.window:'#0d1218'; gg.globalAlpha=lit?0.9:1; gg.fillRect(6+k*13,fh*0.3,7,9); gg.globalAlpha=1
+        if(lit&&!flicker){gg.fillStyle='rgba(255,255,255,.08)'; gg.fillRect(4+k*13,fh*0.3-2,11,13)}
+      }
+      gg.fillStyle=w.trim; gg.globalAlpha=0.55; gg.fillRect(0,2,fw,1.5); gg.globalAlpha=1
+    }
+    block(g,sx,sy,lift,w.faceLo,w.face,w.top,(gg,fw,fh)=>windows(gg,fw,fh,h),(gg,fw,fh)=>windows(gg,fw,fh,h>>>5))
+    // roof detail: vents or a glass skylight
+    if((h&3)===0){ g.fillStyle='rgba(0,0,0,.35)'; diamondPath(g,sx,sy-lift+8); g.save(); g.scale(1,1); g.fill(); g.restore() }
+    if(b<0.9){ diamondPath(g,sx,sy,lift); g.fillStyle=`rgba(4,8,14,${(0.9-b)*0.6})`; g.fill() }
+  }
+  function rail(g,t,sx,sy,b){
+    const lift=t.height*Z_PX
+    g.strokeStyle='rgba(0,0,0,.4)'; g.lineWidth=1
+    block(g,sx,sy,lift,'#1a222b','#232e39','#2e3a46')
+    g.strokeStyle='#b58a3c'; g.lineWidth=2; diamondPath(g,sx,sy,lift+6); g.stroke()
+    g.fillStyle='#8a6a30'; g.fillRect(sx-1,sy+TILE_H/2-lift-6,2,8)
+    if(b<0.8){ diamondPath(g,sx,sy,lift); g.fillStyle=`rgba(4,8,14,${(0.8-b)*0.5})`; g.fill() }
+  }
+  return {floor,wall,rail,drop}
+}
+
+/* ===========================
+   Entities
 =========================== */
 class Entity{
-  constructor(kind,x,y){this.kind=kind; this.x=x; this.y=y; this.z=0; this.r=0.35; this.hp=1; this.maxHp=1; this.dead=false; this.solid=false}
+  constructor(kind,x,y){this.kind=kind; this.x=x; this.y=y; this.z=0; this.r=0.35; this.hp=1; this.maxHp=1; this.dead=false; this.solid=false; this.id=null}
   iso(){return isoToScreen(this.x,this.y,this.z)}
   update(dt,game){} render(g,game){}
 }
-function renderHpBar(g,x,y,hp,max){const w=24,h=4; g.fillStyle='rgba(0,0,0,.6)'; g.fillRect(x-w/2,y,w,h); g.fillStyle='#39ffb8'; g.fillRect(x-w/2,y,(w*hp/max),h); g.strokeStyle='rgba(0,0,0,.8)'; g.strokeRect(x-w/2,y,w,h)}
+function renderHpBar(g,x,y,hp,max,col='#39ffb8'){const w=26,h=4; g.fillStyle='rgba(0,0,0,.6)'; g.fillRect(x-w/2,y,w,h); g.fillStyle=col; g.fillRect(x-w/2,y,(w*hp/max),h); g.strokeStyle='rgba(0,0,0,.8)'; g.lineWidth=1; g.strokeRect(x-w/2,y,w,h)}
+function floorSpeed(t){ if(!t) return 1; return t.type==='brass'||t.type==='bridge'?1.1 : t.type==='circuit'?1.05 : t.type==='rust'?0.85 : t.type==='moss'?0.92 : 1 }
+
+const UPGRADES=[
+  {id:'plating', name:'Suit plating', desc:'+2 maximum HP per level and a full repair.', max:3, cost:[4,6,8], colour:'#39ffb8'},
+  {id:'servos', name:'Leg servos', desc:'+12% movement speed per level.', max:2, cost:[4,7], colour:'#7cf7ff'},
+  {id:'blade', name:'Arc blade', desc:'+1 strike damage and a longer reach per level.', max:2, cost:[5,8], colour:'#ffd45e'},
+  {id:'scanner', name:'Cargo scanner', desc:'Shards, enemies and objectives show on the minimap even before you have seen them.', max:1, cost:[5], colour:'#c58cff'},
+  {id:'repair', name:'Repair kit', desc:'Restore your suit to full HP right now.', max:99, cost:[3], colour:'#ff8c42', consumable:true}
+]
 
 class Player extends Entity{
-  constructor(x,y,sprites){super('player',x,y); this.r=0.34; this.speed=4.6; this.hp=10; this.maxHp=10; this.attackCd=0; this.inv={shards:0, core:true}; this.sprites=sprites; this.anim=0; this.vel={x:0,y:0}}
+  constructor(x,y,sprites){super('player',x,y); this.r=0.34; this.baseSpeed=4.6; this.hp=10; this.maxHp=10; this.attackCd=0; this.hurtCd=0
+    this.inv={shards:0, core:true, lens:false, charts:0}; this.up={plating:0,servos:0,blade:0,scanner:0}
+    this.stats={shardsCollected:0, dronesDown:0, scuttlersDown:0, damageTaken:0, shardsSpent:0}
+    this.sprites=sprites; this.anim=0; this.moving=false; this.face=1; this.vel={x:0,y:0}}
+  get speed(){return this.baseSpeed*(1+0.12*this.up.servos)}
+  get damage(){return 2+this.up.blade}
+  get reach(){return 1.0+0.2*this.up.blade}
   update(dt,game){
     const inp=game.engine.input
     let dx=0,dy=0
-    if(inp.down('KeyW')||inp.down('ArrowUp')) dy-=1
-    if(inp.down('KeyS')||inp.down('ArrowDown')) dy+=1
-    if(inp.down('KeyA')||inp.down('ArrowLeft')) dx-=1
-    if(inp.down('KeyD')||inp.down('ArrowRight')) dx+=1
-    // normalize
-    if(dx||dy){const l=Math.hypot(dx,dy); dx/=l; dy/=l}
-    // floor effects: speed & friction
-    const t=game.map.at(this.x|0,this.y|0)
-    let mult=1, friction=1
-    if(t){
-      if(t.type==='brass') mult=1.10
-      else if(t.type==='circuit') mult=1.05
-      else if(t.type==='rust') mult=0.85
-      else if(t.type==='glass'){ mult=1.0; friction=0.85 } // glide
+    if(game.state==='play'){
+      if(inp.down('KeyW')||inp.down('ArrowUp')) dy-=1
+      if(inp.down('KeyS')||inp.down('ArrowDown')) dy+=1
+      if(inp.down('KeyA')||inp.down('ArrowLeft')) dx-=1
+      if(inp.down('KeyD')||inp.down('ArrowRight')) dx+=1
     }
-    const targetVX = dx*this.speed*mult
-    const targetVY = dy*this.speed*mult
-    // simple acceleration/friction
-    this.vel.x = this.vel.x*friction + (targetVX - this.vel.x)*0.6
-    this.vel.y = this.vel.y*friction + (targetVY - this.vel.y)*0.6
+    if(dx||dy){const l=Math.hypot(dx,dy); dx/=l; dy/=l; const sx=dx-dy; if(Math.abs(sx)>0.01) this.face=Math.sign(sx)}
+    const t=game.map.at(this.x|0,this.y|0)
+    const friction=t&&t.type==='glass'?0.86:1
+    const mult=floorSpeed(t)
+    this.vel.x = this.vel.x*friction + (dx*this.speed*mult - this.vel.x)*0.55
+    this.vel.y = this.vel.y*friction + (dy*this.speed*mult - this.vel.y)*0.55
     const res = game.resolveCollisions(this, this.x + this.vel.x*dt, this.y + this.vel.y*dt)
     this.x=res.x; this.y=res.y
-
-    // attack
+    this.moving=Math.hypot(this.vel.x,this.vel.y)>0.4
     if(this.attackCd>0) this.attackCd-=dt
-    if(inp.pressed('Space') && this.attackCd<=0){
-      this.attackCd=0.45
+    if(this.hurtCd>0) this.hurtCd-=dt
+    if(game.state==='play' && inp.pressed('Space') && this.attackCd<=0){
+      this.attackCd=0.42
       let best=null, bd=999
-      for(const e of game.entities) if(e.kind==='drone'&&!e.dead){
-        const d=dist(this.x,this.y,e.x,e.y); if(d<bd && d<0.95){best=e; bd=d}
+      for(const e of game.entities) if((e.kind==='drone'||e.kind==='scuttler')&&!e.dead){
+        const d=dist(this.x,this.y,e.x,e.y); if(d<bd && d<this.reach){best=e; bd=d}
       }
-      if(best){ best.hp-=2; game.fxLabel(best,'-2','#ff7b7b'); if(best.hp<=0){best.dead=true; game.onEnemyDown(best)} }
-      else game.toast('No target in range.')
+      game.fxSlash(this)
+      if(best){ game.hitEnemy(best,this.damage) } else game.audio.play('swing')
     }
-    this.anim=(this.anim + dt*8)%this.sprites.playerFrames.length
-    game.map.reveal(this.x|0,this.y|0,4); game.events.onMove?.(this)
+    if(this.moving) this.anim=(this.anim + dt*9)%this.sprites.playerWalk.length
+    game.map.reveal(this.x|0,this.y|0,5); game.onPlayerMove(this)
   }
-  render(g){
+  render(g,game){
     const {x,y}=this.iso()
-    const frame=this.sprites.playerFrames[this.anim|0]
-    g.drawImage(frame, x-24, y-46)
-    renderHpBar(g,x,y-30,this.hp,this.maxHp)
+    const frame=this.moving?this.sprites.playerWalk[this.anim|0]:this.sprites.playerIdle[0]
+    g.save(); g.translate(x,y); if(this.face<0) g.scale(-1,1)
+    if(this.hurtCd>0 && Math.sin(game.engine.time*40)>0) g.globalAlpha=0.5
+    g.drawImage(frame, -24, -50); g.restore()
+    renderHpBar(g,x,y-56,this.hp,this.maxHp,this.hp<=3?'#ff6b6b':'#39ffb8')
   }
 }
+
 class Drone extends Entity{
-  constructor(x,y,sprites){super('drone',x,y); this.r=0.32; this.speed=2.5; this.hp=4; this.maxHp=4; this.t=0; this.dir=0; this.cd=0; this.sprites=sprites; this.anim=0}
+  constructor(x,y,sprites){super('drone',x,y); this.r=0.32; this.speed=2.6; this.hp=4; this.maxHp=4; this.t=0; this.dir=0; this.cd=0; this.sprites=sprites; this.anim=0; this.home={x,y}; this.district=null}
   update(dt,game){
     if(this.dead) return
     this.t+=dt; if(this.cd>0) this.cd-=dt
-    const p=game.player
-    const d=dist(this.x,this.y,p.x,p.y)
+    const p=game.player, d=dist(this.x,this.y,p.x,p.y)
     let dx=0,dy=0
-    if(d<5){dx = Math.sign(p.x-this.x); dy=Math.sign(p.y-this.y)}
+    const sameDeck=game.map.districtAt(this.x|0,this.y|0)===game.map.districtAt(p.x|0,p.y|0)
+    if(d<5.5 && sameDeck && game.state==='play'){ dx=(p.x-this.x)/d; dy=(p.y-this.y)/d }
     else { if(this.t>1.4){ this.t=0; this.dir=((game.rng()*8)|0) }
       const dirs=[[1,0],[0,1],[-1,0],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]
-      dx=dirs[this.dir][0]; dy=dirs[this.dir][1]
+      dx=dirs[this.dir][0]*0.7; dy=dirs[this.dir][1]*0.7
+      if(dist(this.x,this.y,this.home.x,this.home.y)>7){ dx=Math.sign(this.home.x-this.x); dy=Math.sign(this.home.y-this.y) }
     }
-    // floor effects for drones too (slight)
-    const t=game.map.at(this.x|0,this.y|0); let mult=1
-    if(t){ if(t.type==='brass') mult=1.08; else if(t.type==='rust') mult=0.9; else if(t.type==='circuit') mult=1.03 }
-    const res=game.resolveCollisions(this, this.x+dx*this.speed*mult*dt, this.y+dy*this.speed*mult*dt, true)
+    const res=game.resolveCollisions(this, this.x+dx*this.speed*dt, this.y+dy*this.speed*dt, true)
     this.x=res.x; this.y=res.y
-    if(d<0.8 && this.cd<=0 && !game.gameOver){ this.cd=1.0; game.damagePlayer(1, this) }
-    this.anim=(this.anim + dt*10)%this.sprites.droneFrames.length
+    this.z=0.35+Math.sin(game.engine.time*3+this.home.x)*0.08
+    if(d<0.85 && this.cd<=0 && game.state==='play'){ this.cd=1.1; game.damagePlayer(1, this) }
+    this.anim=(this.anim + dt*14)%this.sprites.drone.length
   }
-  render(g){
-    const {x,y}=this.iso()
-    const frame=this.sprites.droneFrames[this.anim|0]
-    g.drawImage(frame, x-24, y-44)
-    renderHpBar(g,x,y-28,this.hp,this.maxHp)
+  render(g,game){
+    const {x,y}=this.iso(); const gy=isoToScreen(this.x,this.y,0).y
+    g.fillStyle='rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(x,gy+TILE_H/2-2,13,5,0,0,Math.PI*2); g.fill()
+    g.drawImage(this.sprites.drone[this.anim|0], x-24, y-44)
+    renderHpBar(g,x,y-50,this.hp,this.maxHp,'#ff8c8c')
   }
 }
+
+/* Scuttler: a six-legged furnace crawler. It patrols slowly, then telegraphs and charges
+   in a straight line; hitting a wall or crate leaves it stunned and vulnerable. */
+class Scuttler extends Entity{
+  constructor(x,y,sprites){super('scuttler',x,y); this.r=0.38; this.hp=6; this.maxHp=6; this.sprites=sprites; this.anim=0
+    this.state='patrol'; this.t=0; this.dir={x:1,y:0}; this.wander=0; this.home={x,y}; this.cd=0}
+  update(dt,game){
+    if(this.dead) return
+    this.t+=dt; if(this.cd>0) this.cd-=dt
+    const p=game.player, d=dist(this.x,this.y,p.x,p.y)
+    const sameDeck=game.map.districtAt(this.x|0,this.y|0)===game.map.districtAt(p.x|0,p.y|0)
+    let speed=0
+    if(this.state==='patrol'){
+      this.wander-=dt
+      if(this.wander<=0){ this.wander=1.5+game.rng()*2; const a=game.rng()*Math.PI*2; this.dir={x:Math.cos(a),y:Math.sin(a)}
+        if(dist(this.x,this.y,this.home.x,this.home.y)>6){ const hx=this.home.x-this.x, hy=this.home.y-this.y, L=Math.hypot(hx,hy)||1; this.dir={x:hx/L,y:hy/L} } }
+      speed=1.5
+      if(d<6 && sameDeck && this.cd<=0 && game.state==='play'){ this.state='alert'; this.t=0; game.audio.play('alert') }
+    }else if(this.state==='alert'){
+      speed=0
+      if(this.t>0.7){ this.state='charge'; this.t=0; const L=d||1; this.dir={x:(p.x-this.x)/L,y:(p.y-this.y)/L}; game.audio.play('charge') }
+    }else if(this.state==='charge'){
+      speed=9
+      if(this.t>1.3){ this.state='patrol'; this.cd=1.2; this.t=0 }
+      if(d<0.9 && game.state==='play'){ game.damagePlayer(2,this,0.9); this.state='patrol'; this.cd=1.6; this.t=0 }
+    }else if(this.state==='stunned'){
+      speed=0
+      if(this.t>1.8){ this.state='patrol'; this.cd=1.0; this.t=0 }
+    }
+    if(speed>0){
+      const nx=this.x+this.dir.x*speed*dt, ny=this.y+this.dir.y*speed*dt
+      const res=game.resolveCollisions(this,nx,ny,true)
+      const blocked=dist(res.x,res.y,nx,ny)>0.04
+      this.x=res.x; this.y=res.y
+      if(blocked){ if(this.state==='charge'){ this.state='stunned'; this.t=0; game.fxSparks(this,'#ffb15c'); game.audio.play('clang'); game.engine.cam.shake=0.4 } else { this.wander=0 } }
+    }
+    const rate=this.state==='charge'?26:this.state==='patrol'?8:0
+    this.anim=(this.anim + dt*rate)%this.sprites.scuttler.length
+  }
+  render(g,game){
+    const {x,y}=this.iso()
+    if(this.state==='alert'){ const f=0.5+0.5*Math.sin(game.engine.time*30); g.fillStyle=`rgba(255,140,66,${0.25*f})`; g.beginPath(); g.ellipse(x,y+TILE_H/2-4,22,10,0,0,Math.PI*2); g.fill() }
+    if(this.state==='charge'){ g.fillStyle='rgba(255,140,66,.25)'; g.beginPath(); g.ellipse(x-this.dir.x*10,y+TILE_H/2-8,16,7,0,0,Math.PI*2); g.fill() }
+    g.save(); g.translate(x,y+TILE_H/2-10); if(this.dir.x-this.dir.y<0) g.scale(-1,1)
+    if(this.state==='stunned') g.rotate(Math.sin(game.engine.time*6)*0.08)
+    g.drawImage(this.sprites.scuttler[this.anim|0], -24, -42); g.restore()
+    if(this.state==='alert'||this.state==='charge'){ g.fillStyle='#ffd45e'; g.fillRect(x-4,y-14,2,2); g.fillRect(x+2,y-14,2,2) }
+    if(this.state==='stunned'){ for(let k=0;k<3;k++){ const a=game.engine.time*5+k*2.1; g.fillStyle='#ffe9a8'; g.fillRect(x+Math.cos(a)*10-1,y-30+Math.sin(a)*3,2,2) } }
+    renderHpBar(g,x,y-38,this.hp,this.maxHp,'#ffb15c')
+  }
+}
+
 class NPC extends Entity{
-  constructor(name,x,y,lines){super('npc',x,y); this.name=name; this.lines=lines; this.solid=true; this.r=0.33}
-  talk(game){game.toast(`${this.name}: ${this.lines[(game.rng()*this.lines.length)|0]}`)}
-  render(g){const {x,y}=this.iso(); g.fillStyle='#e8cd8c'; g.fillRect(x-3,y-14,6,14); g.fillStyle='#3a2a16'; g.fillRect(x-3,y-18,6,4)}
+  constructor(id,name,x,y,sprite,lines){super('npc',x,y); this.id=id; this.name=name; this.sprite=sprite; this.lines=lines; this.solid=true; this.r=0.33; this.marker=true; this.said=0}
+  talk(game){ const line=this.lines[this.said%this.lines.length]; this.said++; game.say(this,line) }
+  render(g,game){const {x,y}=this.iso(); const f=game.sprites.npc[this.sprite][Math.abs((game.engine.time*1.5+this.x*3)|0)%2]
+    g.drawImage(f,x-24,y-50)
+    if(this.marker){ const b=Math.sin(game.engine.time*4)*2; g.fillStyle='#ffd45e'; g.font='bold 14px monospace'; g.textAlign='center'; g.fillText('!',x,y-58+b) }}
 }
 class Terminal extends Entity{
-  constructor(id,x,y,onUse){super('terminal',x,y); this.id=id; this.onUse=onUse; this.solid=true; this.r=0.3}
-  render(g){const {x,y}=this.iso(); g.fillStyle='#0a0f14'; g.fillRect(x-6,y-16,12,16); g.fillStyle='rgba(57,255,184,.85)'; g.fillRect(x-5,y-12,10,8); g.fillStyle='rgba(57,255,184,.18)'; g.beginPath(); g.arc(x,y-12,14,0,Math.PI*2); g.fill()}
+  constructor(id,type,x,y){super('terminal',x,y); this.id=id; this.type=type; this.solid=true; this.r=0.32; this.on=false; this.label=type}
+  render(g,game){
+    const {x,y}=this.iso(), t=game.engine.time
+    if(this.type==='pump'){
+      g.fillStyle='#2a2a2e'; g.fillRect(x-11,y-18,22,20); g.fillStyle='#3a3a40'; g.fillRect(x-11,y-22,22,5)
+      g.fillStyle='#5a4a3a'; g.fillRect(x-14,y-10,3,10); g.fillRect(x+11,y-10,3,10)
+      const ph=this.on?Math.sin(t*6)*3:0
+      g.fillStyle='#8a8f99'; g.fillRect(x-3,y-30+ph,6,12)
+      g.fillStyle=this.on?'#39ffb8':'#ff5f5a'; g.fillRect(x-7,y-14,4,4); g.fillRect(x+3,y-14,4,4)
+      if(this.on){ g.fillStyle='rgba(120,220,255,.25)'; g.beginPath(); g.ellipse(x,y+TILE_H/2-6,18,8,0,0,Math.PI*2); g.fill() }
+    }else if(this.type==='kiosk'){
+      g.fillStyle='#3f6a3b'; g.fillRect(x-16,y-14,32,16); g.fillStyle='#2b4a28'; g.fillRect(x-16,y-18,32,5)
+      g.fillStyle='#d7a74a'; g.fillRect(x-16,y-13,32,1.5)
+      g.fillStyle='#0a0f14'; g.fillRect(x-12,y-34,24,14); g.fillStyle='#ffd45e'; g.font='9px monospace'; g.textAlign='center'; g.fillText('SHOP',x,y-24)
+      g.fillStyle='#4a4a4a'; g.fillRect(x-1,y-20,2,6)
+    }else if(this.type==='crucible'){
+      g.fillStyle='#3a2c24'; g.beginPath(); g.ellipse(x,y+4,16,8,0,0,Math.PI*2); g.fill()
+      g.fillStyle='#241a15'; g.fillRect(x-16,y-10,32,14); g.fillStyle='#3a2c24'; g.beginPath(); g.ellipse(x,y-10,16,8,0,0,Math.PI*2); g.fill()
+      const hot=this.on?0.9:0.35+0.15*Math.sin(t*2)
+      g.fillStyle=`rgba(255,${this.on?200:110},${this.on?120:30},${hot})`; g.beginPath(); g.ellipse(x,y-10,12,5,0,0,Math.PI*2); g.fill()
+      if(!this.on){ g.fillStyle='rgba(255,120,40,.2)'; g.beginPath(); g.arc(x,y-14,22,0,Math.PI*2); g.fill() }
+    }else{ // console
+      g.fillStyle='#0a0f14'; g.fillRect(x-7,y-20,14,20); g.fillStyle=this.on?'rgba(57,255,184,.9)':'rgba(255,212,94,.8)'; g.fillRect(x-6,y-16,12,8)
+      g.fillStyle='rgba(57,255,184,.15)'; g.beginPath(); g.arc(x,y-14,14,0,Math.PI*2); g.fill()
+    }
+  }
+}
+class Beacon extends Entity{
+  constructor(x,y){super('beacon',x,y); this.solid=true; this.r=0.9; this.online=false; this.power=0; this.sweep=0}
+  update(dt,game){ if(this.online) this.power=Math.min(1,this.power+dt*0.35); this.sweep+=dt*(0.6+this.power*1.4) }
+  render(g,game){
+    const {x,y}=this.iso(), t=game.engine.time, p=this.power
+    // plinth
+    g.fillStyle='#1b252e'; g.beginPath(); g.ellipse(x,y+12,36,18,0,0,Math.PI*2); g.fill()
+    g.fillStyle='#2a3642'; g.beginPath(); g.ellipse(x,y+6,36,18,0,0,Math.PI*2); g.fill()
+    g.strokeStyle='#b58a3c'; g.lineWidth=2; g.beginPath(); g.ellipse(x,y+6,30,14,0,0,Math.PI*2); g.stroke()
+    // lattice tower
+    const H=118
+    g.strokeStyle='#5a6b7a'; g.lineWidth=3; g.beginPath(); g.moveTo(x-16,y+4); g.lineTo(x-7,y-H); g.moveTo(x+16,y+4); g.lineTo(x+7,y-H); g.stroke()
+    g.strokeStyle='#3b4a58'; g.lineWidth=1.5
+    for(let k=0;k<7;k++){ const yy=y-k*17, w=16-k*1.3; g.beginPath(); g.moveTo(x-w,yy); g.lineTo(x+w-2,yy-14); g.moveTo(x+w,yy); g.lineTo(x-w+2,yy-14); g.stroke() }
+    // conduits that light up as the beacon powers
+    g.strokeStyle=`rgba(57,255,184,${0.2+p*0.8})`; g.lineWidth=2; g.beginPath(); g.moveTo(x,y+4); g.lineTo(x,y-H); g.stroke()
+    // lamp head
+    g.fillStyle='#2a3642'; g.fillRect(x-12,y-H-12,24,14)
+    g.fillStyle=`rgba(57,255,184,${0.15+p*0.85})`; g.beginPath(); g.arc(x,y-H-6,7+p*3,0,Math.PI*2); g.fill()
+    if(p>0){
+      const a=0.15+0.1*Math.sin(t*8)
+      g.fillStyle=`rgba(120,255,210,${a*p})`; g.beginPath(); g.arc(x,y-H-6,30+Math.sin(t*3)*6,0,Math.PI*2); g.fill()
+      // rotating sweep
+      g.save(); g.translate(x,y-H-6); g.rotate(this.sweep)
+      const grd=g.createLinearGradient(0,0,320,0); grd.addColorStop(0,`rgba(180,255,230,${0.55*p})`); grd.addColorStop(1,'rgba(180,255,230,0)')
+      g.fillStyle=grd; g.beginPath(); g.moveTo(0,0); g.lineTo(320,-26); g.lineTo(320,26); g.closePath(); g.fill(); g.restore()
+      // vertical shaft into the sky
+      const sh=g.createLinearGradient(0,y-H,0,y-H-900); sh.addColorStop(0,`rgba(140,255,220,${0.5*p})`); sh.addColorStop(1,'rgba(140,255,220,0)')
+      g.fillStyle=sh; g.fillRect(x-4-p*4,y-H-900,8+p*8,900)
+    }else{ const f=0.3+0.3*Math.sin(t*2); g.fillStyle=`rgba(255,95,90,${f})`; g.fillRect(x-2,y-H-8,4,4) }
+  }
 }
 class SwitchPlate extends Entity{
-  constructor(id,x,y,onToggle){super('switch',x,y); this.id=id; this.on=0; this.onToggle=onToggle; this.solid=false; this.r=0.25}
-  interact(game){this.on=1-this.on; game.fxLabel(this,this.on?'ON':'OFF', this.on?'#8be89e':'#aab7c0'); this.onToggle?.(this,game)}
-  render(g){const {x,y}=this.iso(); g.fillStyle=this.on?'#39ffb8':'#3b5365'; g.beginPath(); g.moveTo(x,y-6); g.lineTo(x+10,y); g.lineTo(x,y+6); g.lineTo(x-10,y); g.closePath(); g.fill()}
+  constructor(id,x,y){super('switch',x,y); this.id=id; this.on=0; this.solid=false; this.r=0.25}
+  render(g,game){const {x,y}=this.iso(), t=game.engine.time
+    g.fillStyle=this.on?'rgba(57,255,184,.22)':'rgba(255,255,255,.04)'; diamondPath(g,x,y); g.fill()
+    g.strokeStyle=this.on?'#39ffb8':'#4a6478'; g.lineWidth=2; g.beginPath(); g.ellipse(x,y+TILE_H/2,16,8,0,0,Math.PI*2); g.stroke()
+    g.fillStyle=this.on?'#39ffb8':'#3b5365'; g.beginPath(); g.moveTo(x,y+TILE_H/2-5); g.lineTo(x+9,y+TILE_H/2); g.lineTo(x,y+TILE_H/2+5); g.lineTo(x-9,y+TILE_H/2); g.closePath(); g.fill()
+    if(this.on){ g.fillStyle=`rgba(57,255,184,${0.3+0.2*Math.sin(t*4)})`; g.fillRect(x-1,y-10,2,24) }}
+}
+class Mirror extends Entity{
+  constructor(id,x,y,target){super('mirror',x,y); this.id=id; this.dir=0; this.target=target; this.solid=true; this.r=0.3}
+  get aligned(){return this.dir===this.target}
+  rotate(){this.dir=(this.dir+1)%4}
+  render(g,game){const {x,y}=this.iso(), t=game.engine.time
+    g.fillStyle='rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(x,y+TILE_H/2,12,5,0,0,Math.PI*2); g.fill()
+    g.fillStyle='#4a5a70'; g.fillRect(x-2,y-22,4,30)
+    g.save(); g.translate(x,y-26); g.rotate([0,Math.PI/2,Math.PI,-Math.PI/2][this.dir]*0.5)
+    g.fillStyle=this.aligned?'#e6f6ff':'#8aa0b8'; g.beginPath(); g.ellipse(0,0,13,7,0,0,Math.PI*2); g.fill()
+    g.strokeStyle=this.aligned?'#c58cff':'#34486a'; g.lineWidth=2; g.stroke()
+    g.fillStyle=this.aligned?'#c58cff':'#34486a'; g.beginPath(); g.moveTo(0,-11); g.lineTo(4,-4); g.lineTo(-4,-4); g.closePath(); g.fill()
+    g.restore()
+    g.fillStyle='#c9d6e6'; g.font='bold 11px monospace'; g.textAlign='center'; g.fillText('NESW'[this.dir],x,y-40)
+    if(this.aligned){ g.strokeStyle=`rgba(197,140,255,${0.5+0.3*Math.sin(t*5)})`; g.lineWidth=2; g.beginPath(); g.moveTo(x,y-30); g.lineTo(x,y-120); g.stroke() }}
 }
 class Gate extends Entity{
-  constructor(id,x,y,open=false){super('gate',x,y); this.id=id; this.open=open; this.solid=!open; this.r=0.4}
-  setOpen(v){this.open=v; this.solid=!v}
-  render(g){ if(this.open) return; const {x,y}=this.iso(); g.fillStyle='#8b6a33'; g.fillRect(x-3,y-26,6,26)}
+  constructor(id,x,y,span){super('gate',x,y); this.id=id; this.open=false; this.solid=false; this.r=0.4; this.span=span; this.lift=0}
+  setOpen(v){this.open=v}
+  blocks(tx,ty){return !this.open && this.span.some(s=>s.x===tx&&s.y===ty)}
+  update(dt){ if(this.open) this.lift=Math.min(1,this.lift+dt*0.8) }
+  render(g,game){
+    const t=game.engine.time
+    for(let i=0;i<this.span.length;i++){
+      const s=this.span[i], p=isoToScreen(s.x,s.y,0), cx=p.x, cy=p.y+TILE_H/2
+      // posts at both ends of the span and bars between
+      g.fillStyle='#8b6a33'; g.fillRect(cx-TILE_W/2+2,cy-TILE_H/4-40,5,40); g.fillRect(cx+TILE_W/2-7,cy+TILE_H/4-40,5,40)
+      g.fillStyle='#d7a74a'; g.fillRect(cx-TILE_W/2+2,cy-TILE_H/4-44,5,4); g.fillRect(cx+TILE_W/2-7,cy+TILE_H/4-44,5,4)
+      const up=this.lift*34
+      g.strokeStyle=this.open?'rgba(215,167,74,.5)':'#c99a3c'; g.lineWidth=2
+      for(let k=0;k<4;k++){ const yy=-8-k*8-up; g.beginPath(); g.moveTo(cx-TILE_W/2+4,cy-TILE_H/4+yy); g.lineTo(cx+TILE_W/2-4,cy+TILE_H/4+yy); g.stroke() }
+      if(!this.open){ g.fillStyle=`rgba(255,212,94,${0.4+0.3*Math.sin(t*3+i)})`; g.fillRect(cx-2,cy-24,4,4) }
+    }
+  }
 }
 class Pickup extends Entity{
-  constructor(kind,x,y,sprites){super('pickup',x,y); this.item=kind; this.solid=false; this.r=0.2; this.sprites=sprites; this.anim=0}
-  update(dt){ this.anim=(this.anim+dt*8)%this.sprites.shardFrames.length }
-  render(g){const {x,y}=this.iso(); const f=this.sprites.shardFrames[this.anim|0]; g.drawImage(f, x-24, y-40)}
+  constructor(item,x,y,sprites,id){super('pickup',x,y); this.item=item; this.solid=false; this.r=0.2; this.sprites=sprites; this.anim=Math.random()*8; this.id=id}
+  update(dt){ this.anim=(this.anim+dt*8)%8 }
+  render(g){const {x,y}=this.iso(); const frames=this.item==='shard'?this.sprites.shard:this.item==='chart'?this.sprites.chart:this.sprites.lens; g.drawImage(frames[this.anim|0], x-24, y-40)}
 }
 class Crate extends Entity{
-  constructor(x,y){super('crate',x,y); this.solid=true; this.r=0.38}
-  render(g){const {x,y}=this.iso(); g.fillStyle='#5c4a2e'; g.fillRect(x-8,y-22,16,22); g.strokeStyle='#2f2416'; g.strokeRect(x-8,y-22,16,22)}
+  constructor(x,y,variant){super('crate',x,y); this.solid=true; this.r=0.4; this.variant=variant}
+  render(g){const {x,y}=this.iso(), h=18
+    const cL=this.variant?'#3a3f46':'#4a3a22', cR=this.variant?'#4b525b':'#5c4a2e', cT=this.variant?'#5d656f':'#705a38'
+    g.save(); g.translate(x-TILE_W/4,y+TILE_H/4-h); g.transform(1,0.5,0,1,0,0); g.fillStyle=cL; g.fillRect(0,0,TILE_W/4,h); g.fillStyle='rgba(215,167,74,.5)'; g.fillRect(0,h*0.4,TILE_W/4,2); g.restore()
+    g.save(); g.translate(x,y+TILE_H/2-h); g.transform(1,-0.5,0,1,0,0); g.fillStyle=cR; g.fillRect(0,0,TILE_W/4,h); g.fillStyle='rgba(215,167,74,.5)'; g.fillRect(0,h*0.4,TILE_W/4,2); g.restore()
+    g.fillStyle=cT; g.beginPath(); g.moveTo(x,y-h+TILE_H/4-8+8); g.lineTo(x+TILE_W/4,y+TILE_H/2-h); g.lineTo(x,y+TILE_H*0.75-h); g.lineTo(x-TILE_W/4,y+TILE_H/2-h); g.closePath(); g.fill()
+    g.strokeStyle='rgba(0,0,0,.4)'; g.lineWidth=1; g.stroke()}
+}
+class Lamp extends Entity{
+  constructor(x,y,colour){super('lamp',x,y); this.solid=true; this.r=0.18; this.colour=colour}
+  render(g,game){const {x,y}=this.iso(), t=game.engine.time, f=0.75+0.1*Math.sin(t*3+x)
+    g.fillStyle='#2a3642'; g.fillRect(x-2,y-40,4,44); g.fillStyle='#1b252e'; g.fillRect(x-5,y+2,10,3)
+    g.fillStyle=this.colour; g.globalAlpha=f; g.fillRect(x-5,y-46,10,7); g.globalAlpha=1
+    const grd=g.createRadialGradient(x,y-42,2,x,y-42,36); grd.addColorStop(0,this.colour.replace(')',',.35)').replace('rgb(','rgba(')); grd.addColorStop(1,'rgba(0,0,0,0)')
+    g.fillStyle=grd; g.beginPath(); g.arc(x,y-42,36,0,Math.PI*2); g.fill()}
 }
 
 /* ===========================
    Quests
 =========================== */
 class Quest{
-  constructor(id,title,type,objectives){this.id=id; this.title=title; this.type=type; this.objectives=objectives.map(o=>({...o,done:false})); this.done=false}
+  constructor(id,title,type,district,objectives){this.id=id; this.title=title; this.type=type; this.district=district; this.objectives=objectives.map(o=>({...o,done:false})); this.done=false}
   progress(check){let changed=false; for(const o of this.objectives){ if(!o.done && check(o)){o.done=true; changed=true} } this.done=this.objectives.every(o=>o.done); return changed}
+  get(id){return this.objectives.find(o=>o.id===id)}
 }
 class QuestManager{
-  constructor(onUi){this.quests=[]; this.onUi=onUi; this.onChange=()=>{}}
-  add(q){this.quests.push(q); this.onUi?.(); this.onChange?.()}
-  mark(id,pred){const q=this.quests.find(q=>q.id===id); if(!q) return; const changed=q.progress(pred); if(changed){this.onUi?.(); this.onChange?.()}}
-  allDone(){return this.quests.length>0 && this.quests.every(q=>q.done)}
+  constructor(){this.quests=[]; this.onUi=()=>{}; this.onChange=()=>{}; this.onComplete=()=>{}}
+  add(q){this.quests.push(q)}
+  find(id){return this.quests.find(q=>q.id===id)}
+  mark(id,objId){const q=this.find(id); if(!q) return false; const was=q.done; const changed=q.progress(o=>o.id===objId); if(changed){this.onUi(); this.onChange(q); if(!was&&q.done) this.onComplete(q)} return changed}
+  isDone(id,objId){const q=this.find(id); if(!q) return false; return objId?!!q.get(objId)?.done:q.done}
+  completed(){return this.quests.filter(q=>q.done).length}
+}
+function buildQuests(){
+  const Q=new QuestManager()
+  Q.add(new Quest('story','First Assignment','story','harbour',[
+    {id:'reach',text:'Find the Harbour Chief in the Harbour Ring'},
+    {id:'handoff',text:'Deliver the micro‑core (press E beside the Chief)'}
+  ]))
+  Q.add(new Quest('puzzle','Harmonic Locks','puzzle','harbour',[
+    {id:'pa',text:'Set harmonic plate A'},{id:'pb',text:'Set harmonic plate B'},{id:'pc',text:'Set harmonic plate C'},{id:'open',text:'Open the brass gate to the Observatory bridge'}
+  ]))
+  Q.add(new Quest('combat','Wayward Sentinels','combat','harbour',[
+    {id:'d1',text:'Disable 1/3 patrol drones'},{id:'d2',text:'Disable 2/3 patrol drones'},{id:'d3',text:'Disable 3/3 patrol drones'}
+  ]))
+  Q.add(new Quest('foundry','Cold Furnace','story','foundry',[
+    {id:'foreman',text:'Find Foreman Okoro on the Foundry Deck'},
+    {id:'p1',text:'Restart coolant pump 1/3'},{id:'p2',text:'Restart coolant pump 2/3'},{id:'p3',text:'Restart coolant pump 3/3'},
+    {id:'lens',text:'Lift the focusing lens from the crucible'}
+  ]))
+  Q.add(new Quest('scuttle','Scuttler Cull','combat','foundry',[
+    {id:'k1',text:'Disable 1/3 scuttlers (strike them while they are stunned)'},{id:'k2',text:'Disable 2/3 scuttlers'},{id:'k3',text:'Disable 3/3 scuttlers'}
+  ]))
+  Q.add(new Quest('gardens','Starlight Calibration','puzzle','gardens',[
+    {id:'archivist',text:'Find Archivist Vey in the Observatory Gardens'},
+    {id:'c1',text:'Recover star‑chart fragment 1/3'},{id:'c2',text:'Recover star‑chart fragment 2/3'},{id:'c3',text:'Recover star‑chart fragment 3/3'},
+    {id:'mirrors',text:'Turn the three mirrors to the headings on the chart'}
+  ]))
+  Q.add(new Quest('beacon','Light the Beacon','story','harbour',[
+    {id:'core',text:'Micro‑core delivered to the Chief'},
+    {id:'lens',text:'Focusing lens recovered from the Foundry'},
+    {id:'align',text:'Observatory mirrors aligned'},
+    {id:'ignite',text:'Energise the beacon console'}
+  ]))
+  Q.add(new Quest('explore','Chart the Concourse','exploration','all',[
+    {id:'foundry',text:'Cross the bridge to the Foundry Deck'},{id:'gardens',text:'Pass the gate into the Observatory Gardens'},{id:'disc',text:'Reveal 60% of the walkable decks'}
+  ]))
+  Q.add(new Quest('collect','Spare Capacitors','collection','all',[
+    {id:'s8',text:'Collect 8 capacitor shards'},{id:'s16',text:'Collect 16 capacitor shards'}
+  ]))
+  return Q
 }
 
 /* ===========================
-   Music (WebAudio)
+   Audio: synthesised ambience and cues (Web Audio)
 =========================== */
-function makeMusic(){
-  const Music = {}
-  let ac, master, running=false
-  function init(){ if(ac) return; ac=new (window.AudioContext||window.webkitAudioContext)(); master=ac.createGain(); master.gain.value=0.1; master.connect(ac.destination) }
-  function note(freq,len=0.25,type='sine',gain=0.2,attack=0.01,release=0.2, t=ac.currentTime){
-    const o=ac.createOscillator(), g=ac.createGain(); o.type=type; o.frequency.value=freq
-    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+attack); g.gain.linearRampToValueAtTime(0,t+len+release)
-    o.connect(g).connect(master); o.start(t); o.stop(t+len+release)
+const MUTE_KEY='skyworks.muted'
+function makeAudio(){
+  let ac=null, master, sfx, amb, running=false, chimeTimer=null, chordTimer=null, pad=null
+  let muted=localStorage.getItem(MUTE_KEY)==='1'
+  const A={ get muted(){return muted}, get ready(){return !!ac} }
+  function init(){
+    if(ac) return
+    ac=new (window.AudioContext||window.webkitAudioContext)()
+    master=ac.createGain(); master.gain.value=muted?0:1; master.connect(ac.destination)
+    sfx=ac.createGain(); sfx.gain.value=0.55; sfx.connect(master)
+    amb=ac.createGain(); amb.gain.value=0.0; amb.connect(master)
   }
-  function seq(){
-    if(!running) return
-    const t0=ac.currentTime
-    const base=110, scale=[0,3,5,7,10,12].map(s=>base*Math.pow(2,s/12))
-    for(let i=0;i<8;i++){ note(scale[i%scale.length]/2,0.35,'sawtooth',0.07,0.01,0.2,t0+i*0.5) }
-    for(let i=0;i<4;i++){ const f=scale[(i*2)%scale.length]; note(f*2,1.8,'triangle',0.05,0.5,1.2,t0+i*1) }
-    for(let i=0;i<16;i++){ const f=scale[(i*3)%scale.length]*4; note(f,0.12,'square',0.03,0.01,0.08,t0+i*0.25) }
-    setTimeout(seq, 4000)
+  function noiseBuffer(sec=2){ const b=ac.createBuffer(1,ac.sampleRate*sec,ac.sampleRate), d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; return b }
+  function startAmbient(){
+    if(!ac||running) return; running=true
+    amb.gain.setTargetAtTime(0.32,ac.currentTime,2)
+    // Pad: three detuned voices through a slowly breathing low-pass filter
+    const filt=ac.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=420; filt.Q.value=0.8; filt.connect(amb)
+    const lfo=ac.createOscillator(); lfo.frequency.value=0.045; const lfoG=ac.createGain(); lfoG.gain.value=260; lfo.connect(lfoG).connect(filt.frequency); lfo.start()
+    const voices=[0,1,2].map(i=>{const o=ac.createOscillator(); o.type=i===1?'triangle':'sawtooth'; const g=ac.createGain(); g.gain.value=i===1?0.09:0.05; o.connect(g).connect(filt); o.start(); return {o,g}})
+    // Wind: band-passed noise with a slow swell
+    const wind=ac.createBufferSource(); wind.buffer=noiseBuffer(3); wind.loop=true
+    const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=380; bp.Q.value=0.5
+    const wg=ac.createGain(); wg.gain.value=0.05
+    const wl=ac.createOscillator(); wl.frequency.value=0.09; const wlg=ac.createGain(); wlg.gain.value=0.03; wl.connect(wlg).connect(wg.gain); wl.start()
+    wind.connect(bp).connect(wg).connect(amb); wind.start()
+    pad={voices,filt}
+    // Chord progression: A minor-ish pads that change every ten seconds
+    const chords=[[110,164.81,261.63],[87.31,130.81,220],[130.81,196,329.63],[98,146.83,246.94]]
+    let ci=0
+    const setChord=()=>{ if(!running) return; const ch=chords[ci++%chords.length]; const t=ac.currentTime
+      voices.forEach((v,i)=>{ v.o.frequency.setTargetAtTime(ch[i]*(i===2?0.5:1)*(i===0?1.003:1),t,1.5) })
+      chordTimer=setTimeout(setChord,10000) }
+    setChord()
+    const chime=()=>{ if(!running) return; const base=pick(Math.random,[523.25,659.25,783.99,987.77,1046.5]); tone(base,0.02,2.4,'sine',0.045); setTimeout(()=>tone(base*1.5,0.02,1.8,'sine',0.03),180); chimeTimer=setTimeout(chime,3500+Math.random()*5000) }
+    chimeTimer=setTimeout(chime,2000)
   }
-  Music.toggle=async ()=>{
-    if(!ac) init()
-    if(ac.state==='suspended') await ac.resume()
-    running=!running
-    if(running) seq()
-    return running
+  function tone(freq,attack,decay,type='sine',gain=0.2,t=ac.currentTime,dest=sfx,slideTo=null){
+    const o=ac.createOscillator(), g=ac.createGain(); o.type=type; o.frequency.setValueAtTime(freq,t)
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,t+decay)
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(gain,t+attack); g.gain.exponentialRampToValueAtTime(0.0001,t+attack+decay)
+    o.connect(g).connect(dest); o.start(t); o.stop(t+attack+decay+0.05)
   }
-  return Music
+  function burst(decay,gain,freq=1200,type='highpass',t=ac.currentTime){
+    const s=ac.createBufferSource(); s.buffer=noiseBuffer(0.5); const f=ac.createBiquadFilter(); f.type=type; f.frequency.value=freq
+    const g=ac.createGain(); g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+decay); s.connect(f).connect(g).connect(sfx); s.start(t); s.stop(t+decay+0.05)
+  }
+  const cues={
+    swing(){ burst(0.12,0.12,900,'bandpass') },
+    hit(){ tone(180,0.005,0.12,'square',0.12,ac.currentTime,sfx,90); burst(0.08,0.2,2000) },
+    hurt(){ tone(140,0.005,0.25,'sawtooth',0.18,ac.currentTime,sfx,60); burst(0.18,0.25,600,'lowpass') },
+    enemyDown(){ const t=ac.currentTime; tone(440,0.01,0.3,'sawtooth',0.1,t,sfx,110); burst(0.3,0.2,3000); tone(880,0.01,0.2,'triangle',0.06,t+0.08) },
+    pickup(){ const t=ac.currentTime; tone(880,0.01,0.12,'sine',0.12,t); tone(1318.5,0.01,0.22,'sine',0.1,t+0.08) },
+    item(){ const t=ac.currentTime; [523.25,659.25,783.99,1046.5].forEach((f,i)=>tone(f,0.01,0.35,'triangle',0.09,t+i*0.09)) },
+    interact(){ tone(660,0.005,0.08,'square',0.06) },
+    denied(){ const t=ac.currentTime; tone(220,0.01,0.15,'square',0.07,t); tone(196,0.01,0.2,'square',0.07,t+0.12) },
+    plate(){ const t=ac.currentTime; tone(392,0.01,0.5,'triangle',0.1,t); tone(587.33,0.01,0.6,'sine',0.08,t+0.05) },
+    gate(){ const t=ac.currentTime; tone(55,0.05,1.4,'sawtooth',0.18,t,sfx,40); burst(0.9,0.12,300,'lowpass'); [523.25,659.25,783.99].forEach((f,i)=>tone(f,0.02,0.8,'sine',0.08,t+0.5+i*0.12)) },
+    quest(){ const t=ac.currentTime; [523.25,659.25,783.99,1046.5,1318.5].forEach((f,i)=>tone(f,0.01,0.5,'triangle',0.08,t+i*0.07)) },
+    alert(){ tone(900,0.005,0.08,'square',0.06,ac.currentTime); tone(900,0.005,0.08,'square',0.06,ac.currentTime+0.12) },
+    charge(){ burst(0.35,0.15,500,'bandpass'); tone(120,0.02,0.35,'sawtooth',0.08,ac.currentTime,sfx,240) },
+    clang(){ tone(1046.5,0.002,0.4,'square',0.08,ac.currentTime,sfx,200); burst(0.25,0.25,1800,'highpass') },
+    pump(){ const t=ac.currentTime; tone(90,0.05,0.8,'sawtooth',0.12,t,sfx,140); for(let i=0;i<4;i++) tone(300+i*80,0.01,0.1,'square',0.04,t+0.3+i*0.1) },
+    district(){ const t=ac.currentTime; [392,523.25,659.25].forEach((f,i)=>tone(f,0.02,1.2,'sine',0.07,t+i*0.18)) },
+    buy(){ const t=ac.currentTime; tone(659.25,0.01,0.15,'square',0.07,t); tone(987.77,0.01,0.3,'square',0.07,t+0.1) },
+    ignite(){ const t=ac.currentTime; tone(80,0.1,3.5,'sawtooth',0.2,t,sfx,640); burst(2.5,0.18,800,'lowpass'); [261.63,329.63,392,523.25,659.25,783.99].forEach((f,i)=>tone(f,0.05,3.2,'triangle',0.09,t+1.2+i*0.15)); setTimeout(()=>{ if(running) amb.gain.setTargetAtTime(0.5,ac.currentTime,2) },1000) },
+    gameover(){ const t=ac.currentTime; [330,277,220,165].forEach((f,i)=>tone(f,0.02,0.9,'sawtooth',0.1,t+i*0.35,sfx,f*0.8)) }
+  }
+  A.init=init
+  A.start=()=>{ init(); if(ac.state==='suspended') ac.resume(); startAmbient() }
+  A.play=(name)=>{ if(!ac||muted) return; try{ cues[name]?.() }catch(e){} }
+  A.setMuted=(v)=>{ muted=v; localStorage.setItem(MUTE_KEY,v?'1':'0'); if(master) master.gain.setTargetAtTime(v?0:1,ac.currentTime,0.05); if(!v&&ac&&ac.state==='suspended') ac.resume() }
+  A.toggle=()=>{ A.setMuted(!muted); return !muted }
+  return A
 }
 
 /* ===========================
-   Game Director
+   Save system
+=========================== */
+const SAVE_KEY='skyworks.save.v2'
+function packBits(arr){let s=''; for(let i=0;i<arr.length;i+=8){let b=0; for(let k=0;k<8;k++) b|=(arr[i+k]?1:0)<<k; s+=String.fromCharCode(b)} return btoa(s)}
+function unpackBits(str,len){const out=new Uint8Array(len); try{const s=atob(str); for(let i=0;i<s.length;i++){const b=s.charCodeAt(i); for(let k=0;k<8&&i*8+k<len;k++) out[i*8+k]=(b>>k)&1}}catch(e){} return out}
+function loadSave(){ try{ const raw=localStorage.getItem(SAVE_KEY); if(!raw) return null; const d=JSON.parse(raw); return d&&d.v===2?d:null }catch(e){ return null } }
+function clearSave(){ localStorage.removeItem(SAVE_KEY) }
+
+/* ===========================
+   Game director
 =========================== */
 class Game{
   constructor(canvas){
     this.engine=new Engine(canvas); this.g=this.engine.g
-    this.seed=String(Date.now()); this.rng=sfc32(...hashStrToSeed(this.seed+'game'))
-    this.map=new IsoMap(32,32,this.seed); this.map.generate(); this.factory=this.map.factory
-    this.sprites=makeSpriteFactory()
-    this.entities=[]
-    this.player=new Player(4,4,this.sprites); this.entities.push(this.player)
-    this.ui={quests:document.getElementById('quests'), ql:document.getElementById('ql'), hp:document.getElementById('hp'), toasts:document.getElementById('toasts'),
-      flash:document.getElementById('flash'), overLose:document.getElementById('overlayGameOver'), overWin:document.getElementById('overlayWin'), musicBtn:document.getElementById('music')}
-    this.quest=new QuestManager(()=>this.refreshQuestUi()); this.quest.onChange=()=>this.checkVictory()
-    this.events={}
-    this.labels=[]
-    this.mouseIso={x:0,y:0}
-    this.gameOver=false; this.victory=false
-    this.music=makeMusic(); this.musicArmed=false
-
-    this._buildWorld()
-    this._placeCollectiblesGuaranteed(5)  // ensure all are reachable from spawn
-    this._wireInput()
-    this._mount()
-
-    this.ui.overWin.classList.add('hidden'); this.ui.overLose.classList.add('hidden')
+    this.sprites=makeSpriteFactory(); this.audio=makeAudio()
+    this.ui={}
+    for(const id of ['quests','ql','hp','hpfill','shards','clock','district','toasts','flash','banner','bannerTitle','bannerSub','help','title','shop','shopRows','shopShards','ending','credits','creditStats','overlayGameOver','soundBtn','saveBtn','titleBtn','savenote','btnContinue']) this.ui[id]=document.getElementById(id)
+    this.state='title'; this.showMinimap=true; this.mouse=null
+    this.mini={canvas:document.createElement('canvas'), t:0}; this.mini.canvas.width=224; this.mini.canvas.height=136
+    this.reset(String(Date.now()))
+    this._wireInput(); this._mount()
+    this.ui.soundBtn.textContent='Sound: '+(this.audio.muted?'off':'on')
+    this.setHudVisible(false)
   }
+  setHudVisible(v){ for(const el of [this.ui.ql,this.ui.help,document.querySelector('.pills')]) el.classList.toggle('hidden',!v); if(v) document.getElementById('btnNew').textContent='Begin a new run'; else document.getElementById('btnNew').textContent=loadSave()?'Begin a new run (replaces the saved run)':'Begin a new run' }
   start(){ this.engine.start() }
 
-  /* Build world fixtures within structures */
+  /* ---------- run setup ---------- */
+  reset(seed){
+    this.seed=seed; this.rng=sfc32(...hashStrToSeed(seed+'game'))
+    this.map=new IsoMap(seed); this.map.generate(); this.tiles=makeTileRenderer(this.map); this.sky=makeSky(seed)
+    this.entities=[]; this.labels=[]; this.fx=[]; this.pickups=[]; this.enemies=[]
+    this.player=new Player(4,4,this.sprites); this.entities.push(this.player)
+    this.quest=buildQuests()
+    this.quest.onUi=()=>this.refreshQuestUi()
+    this.quest.onChange=()=>{ this.updateMarkers(); this.save(true) }
+    this.quest.onComplete=(q)=>{ this.toast(`Quest complete: ${q.title}`,'accent',3000); this.audio.play('quest') }
+    this.flags={gateOpen:false, crucibleOn:false, lensTaken:false, ignited:false, visited:{}}
+    this.elapsed=0; this.district=null; this.endT=0; this.endLines=0; this.saveTimer=0; this.hudTimer=0; this.mini.t=0
+    this._buildWorld()
+    this.map.reveal(this.player.x|0,this.player.y|0,6)
+    const ps=this.player.iso(); this.engine.cam.snapTo(ps.x,ps.y-20); this.engine.cam.zoom=1
+    this.refreshQuestUi(); this.updateMarkers(); this.setHud()
+    this.ui.district.textContent=''
+  }
+  _spot(district,roomIndex,ox=0,oy=0){
+    const rooms=this.map.rooms[district]||[]
+    if(rooms[roomIndex]){ const rm=rooms[roomIndex]; return this.map.floorNear(rm.cx+ox,rm.cy+oy,3,district) }
+    return this.map.randomFloor(this.rng,district,this.occupied(),2)
+  }
+  occupied(){ return this.entities.map(e=>({x:e.x,y:e.y})) }
   _buildWorld(){
-    // NPC & terminal in a far building
-    const chiefPos=this._findFloorNear(26,16,6)
-    const termPos=this._findFloorNear(26,18,6)
-    this.chief=new NPC('Harbor Chief', chiefPos.x, chiefPos.y, [
-      "Wind shear's lively today.",
-      "Green conduits will carry you—if you let them.",
-      "Cargo moves ideas as much as mass here."
-    ])
-    this.entities.push(this.chief)
-    this.term=new Terminal('beacon', termPos.x, termPos.y, (game)=>{game.toast('Beacon harmonics stabilized.','accent'); game.onTerminal('beacon')})
-    this.entities.push(this.term)
-
-    // Puzzle plates in a lab wing; brass gate in the corridor
-    const gatePos=this._findFloorNear(15,8,8)
-    this.gate=new Gate('GateA', gatePos.x, gatePos.y, false); this.entities.push(this.gate)
-    const plates=[
-      this._findFloorNear(gatePos.x-2, gatePos.y+1, 8),
-      this._findFloorNear(gatePos.x, gatePos.y+2, 8),
-      this._findFloorNear(gatePos.x+2, gatePos.y+1, 8)
-    ]
-    this.switches=plates.map((p,i)=>new SwitchPlate('S'+i,p.x,p.y,()=>this.onSwitch()))
+    const H=DISTRICTS.harbour.rect, trim={harbour:'rgb(57,255,184)',foundry:'rgb(255,140,66)',gardens:'rgb(197,140,255)'}
+    // Spawn on the western edge of the Harbour Ring
+    const sp=this.map.floorNear(H.x+3,H.y+(H.h>>1),8,'harbour',true); this.player.x=sp.x+0.5; this.player.y=sp.y+0.5
+    // Harbour Ring: the Chief, the beacon hall, the Quartermaster, the harmonic plates
+    const chiefPos=this._spot('harbour',0)
+    this.chief=new NPC('chief','Harbour Chief',chiefPos.x,chiefPos.y,'chief',[
+      'Courier. You made it through the wind shear. Is that the micro‑core?',
+      'The beacon needs more than a core: a focusing lens from the Foundry and the Observatory mirrors set true.',
+      'Okoro runs the Foundry Deck across the north bridge. Vey keeps the Gardens; the brass gate to her bridge answers to the harmonic plates.',
+      'Spend your shards with the Quartermaster. The drones out there do not care how brave you are.'
+    ]); this.entities.push(this.chief)
+    const bpos=this._spot('harbour',1); this.beacon=new Beacon(bpos.x+0.5,bpos.y+0.5); this.entities.push(this.beacon)
+    const cpos=this.map.floorNear(bpos.x-2,bpos.y+1,3,'harbour'); this.console=new Terminal('console','console',cpos.x+0.5,cpos.y+0.5); this.entities.push(this.console)
+    const kpos=this._spot('harbour',2); this.kiosk=new Terminal('kiosk','kiosk',kpos.x+0.5,kpos.y+0.5); this.entities.push(this.kiosk)
+    const qpos=this.map.floorNear(kpos.x,kpos.y-1,2,'harbour')
+    this.quartermaster=new NPC('quartermaster','Quartermaster',qpos.x+(qpos.x===kpos.x&&qpos.y===kpos.y?1:0),qpos.y,'quartermaster',[
+      'Plating, servos, blades. Shards on the counter, courier. Use the kiosk beside me.',
+      'Scuttlers hit like a dropped crate. Buy plating before you cross to the Foundry.'
+    ]); this.quartermaster.marker=false; this.entities.push(this.quartermaster)
+    const ppos=this._spot('harbour',3)
+    this.switches=[-1,0,1].map((k,i)=>{ const p=this.map.floorNear(ppos.x+k*2,ppos.y,3,'harbour'); return new SwitchPlate('S'+i,p.x+0.5,p.y+0.5) })
     this.switches.forEach(s=>this.entities.push(s))
-
-    // Crates as obstacles sprinkled
-    for(let i=0;i<12;i++){
-      const p=this._findRandomFloor()
-      if(dist(p.x,p.y,this.player.x,this.player.y)>4) this.entities.push(new Crate(p.x,p.y))
+    // The brass gate spans the Observatory bridge
+    const gb=BRIDGES.find(b=>b.gate), gx=gb.x0+3
+    this.gate=new Gate('gate',gx+0.5,gb.y+0.5,[-1,0,1].map(dy=>({x:gx,y:gb.y+dy}))); this.entities.push(this.gate)
+    // Foundry Deck: Foreman Okoro, the crucible and three coolant pumps
+    const fpos=this._spot('foundry',0)
+    this.foreman=new NPC('foreman','Foreman Okoro',fpos.x,fpos.y,'foreman',[
+      'The crucible went cold when the coolant pumps tripped. Three pumps, three buildings. Get them turning and the lens will lift free.',
+      'Watch the scuttlers. They line up, they charge, they hit the wall. That is your moment.',
+      'A lens is no good in a cold crucible. Pumps first.'
+    ]); this.entities.push(this.foreman)
+    const crp=this.map.floorNear(fpos.x+2,fpos.y,3,'foundry'); this.crucible=new Terminal('crucible','crucible',crp.x+0.5,crp.y+0.5); this.entities.push(this.crucible)
+    this.pumps=[1,2,3].map(i=>{ const p=this._spot('foundry',i); const t=new Terminal('pump'+i,'pump',p.x+0.5,p.y+0.5); this.entities.push(t); return t })
+    // Observatory Gardens: Archivist Vey, three mirrors with secret headings, three chart fragments
+    const apos=this._spot('gardens',0)
+    this.mirrorTargets=[0,1,2].map(()=>1+((this.rng()*3)|0))
+    const headings=['north','east','south','west']
+    this.archivist=new NPC('archivist','Archivist Vey',apos.x,apos.y,'archivist',[
+      'You walked through the harmonic gate? Then the Chief trusts you. The star‑charts were scattered when the drones came; find the three fragments.',
+      `The charts give the mirror headings: the first mirror ${headings[this.mirrorTargets[0]]}, the second ${headings[this.mirrorTargets[1]]}, the third ${headings[this.mirrorTargets[2]]}.`,
+      'Press E at a mirror to turn it a quarter. When all three agree with the chart the beam will answer.'
+    ]); this.entities.push(this.archivist)
+    this.mirrors=[1,2,3].map((ri,i)=>{ const p=this._spot('gardens',ri); const m=new Mirror('M'+i,p.x+0.5,p.y+0.5,this.mirrorTargets[i]); this.entities.push(m); return m })
+    for(let i=0;i<3;i++){ const p=this.map.randomFloor(this.rng,'gardens',this.occupied(),3); this.addPickup('chart',p.x+0.5,p.y+0.5,'chart-'+i) }
+    // Lamps at building corners, crates, shards and enemies per deck
+    for(const d of Object.values(DISTRICTS)){
+      for(const rm of this.map.rooms[d.id]){ const lx=rm.x+rm.w, ly=rm.y+rm.h; const t=this.map.at(lx,ly); if(t&&t.walkable&&!t.door){ this.entities.push(new Lamp(lx+0.5,ly+0.5,trim[d.id])); this.map.addLight(lx,ly,3.2,0.32) } }
+      for(let i=0;i<7;i++){ const p=this.map.randomFloor(this.rng,d.id,this.occupied().concat([{x:this.player.x,y:this.player.y}]),2.2); this.entities.push(new Crate(p.x+0.5,p.y+0.5,d.id!=='harbour')) }
+      const shardCount=d.id==='harbour'?6:5
+      for(let i=0;i<shardCount;i++){ const p=this.map.randomFloor(this.rng,d.id,this.occupied().concat([{x:this.player.x,y:this.player.y}]),3); this.addPickup('shard',p.x+0.5,p.y+0.5,`shard-${d.id}-${i}`) }
     }
+    this.map.addLight(this.beacon.x|0,this.beacon.y|0,3,0.25)
+    this.map.addLight(this.crucible.x|0,this.crucible.y|0,3,0.3)
+    for(let i=0;i<3;i++){ const p=this.map.randomFloor(this.rng,'harbour',this.occupied().concat([{x:this.player.x,y:this.player.y}]),7); this.addEnemy(new Drone(p.x+0.5,p.y+0.5,this.sprites)) }
+    for(let i=0;i<2;i++){ const p=this.map.randomFloor(this.rng,'gardens',this.occupied(),4); this.addEnemy(new Drone(p.x+0.5,p.y+0.5,this.sprites)) }
+    for(let i=0;i<4;i++){ const p=this.map.randomFloor(this.rng,'foundry',this.occupied().concat([this.foreman]),4); this.addEnemy(new Scuttler(p.x+0.5,p.y+0.5,this.sprites)) }
+    // Darken floor tiles that hug a wall so buildings sit into the deck
+    for(let y=0;y<this.map.h;y++)for(let x=0;x<this.map.w;x++){ const t=this.map.at(x,y); if(!t.walkable) continue; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const n=this.map.at(x+dx,y+dy); if(n&&n.type==='wall'){ t.lit-=0.07; break } } }
+  }
+  addPickup(item,x,y,id){ const p=new Pickup(item,x,y,this.sprites,id); this.pickups.push(p); this.entities.push(p); return p }
+  addEnemy(e){ e.id='e'+this.enemies.length; this.enemies.push(e); this.entities.push(e); return e }
 
-    // Drones (enemies) roam halls
-    this.targetDrones=3
-    for(let i=0;i<this.targetDrones;i++){
-      const p=this._findRandomFloor()
-      this.entities.push(new Drone(p.x,p.y,this.sprites))
-    }
+  /* ---------- persistence ---------- */
+  serialize(){
+    const quests={}; for(const q of this.quest.quests) quests[q.id]=q.objectives.filter(o=>o.done).map(o=>o.id)
+    return {v:2, seed:this.seed, elapsed:this.elapsed, savedAt:Date.now(),
+      player:{x:this.player.x,y:this.player.y,hp:this.player.hp,maxHp:this.player.maxHp,inv:this.player.inv,up:this.player.up,stats:this.player.stats},
+      quests, flags:{...this.flags, switches:this.switches.map(s=>s.on), mirrors:this.mirrors.map(m=>m.dir), pumps:this.pumps.map(p=>p.on)},
+      taken:this.takenIds||[], drops:this.pickups.filter(p=>p.id==='drop').map(p=>({x:p.x,y:p.y})),
+      enemies:this.enemies.map(e=>({x:e.x,y:e.y,hp:e.hp,dead:e.dead})),
+      discovered:packBits(this.map.discovered)}
+  }
+  save(quiet=false){
+    if(this.state!=='play' && this.state!=='shop') return
+    try{ localStorage.setItem(SAVE_KEY,JSON.stringify(this.serialize())); this.ui.savenote.classList.add('show'); clearTimeout(this._saveNoteT); this._saveNoteT=setTimeout(()=>this.ui.savenote.classList.remove('show'),1400); if(!quiet) this.toast('Progress saved.','accent') }
+    catch(e){ if(!quiet) this.toast('Could not save (storage blocked).','warn') }
+  }
+  applySave(d){
+    this.reset(d.seed)
+    const p=this.player, s=d.player
+    p.x=s.x; p.y=s.y; p.hp=s.hp; p.maxHp=s.maxHp; Object.assign(p.inv,s.inv); Object.assign(p.up,s.up); Object.assign(p.stats,s.stats)
+    this.elapsed=d.elapsed||0
+    for(const q of this.quest.quests){ const done=d.quests[q.id]||[]; for(const o of q.objectives) o.done=done.includes(o.id); q.done=q.objectives.every(o=>o.done) }
+    const f=d.flags||{}
+    this.flags.visited=f.visited||{}; this.flags.crucibleOn=!!f.crucibleOn; this.flags.lensTaken=!!f.lensTaken; this.flags.gateOpen=!!f.gateOpen
+    ;(f.switches||[]).forEach((v,i)=>{ if(this.switches[i]) this.switches[i].on=v })
+    ;(f.mirrors||[]).forEach((v,i)=>{ if(this.mirrors[i]) this.mirrors[i].dir=v })
+    ;(f.pumps||[]).forEach((v,i)=>{ if(this.pumps[i]) this.pumps[i].on=v })
+    this.crucible.on=this.flags.crucibleOn&&!this.flags.lensTaken
+    if(this.flags.gateOpen){ this.gate.setOpen(true); this.gate.lift=1 }
+    this.takenIds=d.taken||[]
+    for(const id of this.takenIds){ const pk=this.pickups.find(p=>p.id===id); if(pk) this.removeEntity(pk) }
+    for(const dr of d.drops||[]) this.addPickup('shard',dr.x,dr.y,'drop')
+    ;(d.enemies||[]).forEach((e,i)=>{ const en=this.enemies[i]; if(!en) return; en.x=e.x; en.y=e.y; en.hp=e.hp; en.dead=e.dead; if(en.dead) this.removeEntity(en) })
+    this.map.discovered=unpackBits(d.discovered,this.map.w*this.map.h)
+    this.map.reveal(p.x|0,p.y|0,5)
+    this.district=this.map.districtAt(p.x|0,p.y|0); this.ui.district.textContent=DISTRICTS[this.district]?.name||''
+    const ps=p.iso(); this.engine.cam.snapTo(ps.x,ps.y-20)
+    this.refreshQuestUi(); this.updateMarkers(); this.setHud()
+  }
+  removeEntity(e){ e.dead=true; const i=this.entities.indexOf(e); if(i>=0) this.entities.splice(i,1); const j=this.pickups.indexOf(e); if(j>=0) this.pickups.splice(j,1) }
 
-    // Reveal start
-    this.map.reveal(this.player.x|0,this.player.y|0,5)
-
-    // Quests
-    this.quest.add(new Quest('story','First Assignment','story',[
-      {id:'reach',text:'Find the Harbor Chief on the east ring'},
-      {id:'handoff',text:'Deliver the micro‑core (interact)'},
-      {id:'beacon',text:'Energize the signal beacon'}
-    ]))
-    this.quest.add(new Quest('puzzle','Harmonic Locks','puzzle',[
-      {id:'pa',text:'Set plate A'},{id:'pb',text:'Set plate B'},{id:'pc',text:'Set plate C'},{id:'open',text:'Open the brass gate'}
-    ]))
-    this.quest.add(new Quest('combat','Wayward Sentinels','combat',[
-      {id:'d1',text:'Disable 1/3 drones'},{id:'d2',text:'Disable 2/3 drones'},{id:'d3',text:'Disable 3/3 drones'}
-    ]))
-    this.quest.add(new Quest('explore','Chart the Concourse','exploration',[{id:'disc',text:'Reveal 75% of the ring'}]))
-    this.quest.add(new Quest('collect','Spare Capacitors','collection',[
-      {id:'s1',text:'Collect 1/5 shards'},{id:'s2',text:'Collect 2/5 shards'},{id:'s3',text:'Collect 3/5 shards'},{id:'s4',text:'Collect 4/5 shards'},{id:'s5',text:'Collect 5/5 shards'}
-    ]))
+  /* ---------- flow ---------- */
+  beginNew(){ this.reset(String(Date.now())); this.takenIds=[]; this.enterPlay(); this.toast('Carry the micro‑core to the Harbour Chief.','accent',3500) }
+  continueRun(){ const d=loadSave(); if(!d){ this.toast('No saved run found.','warn'); return false } this.applySave(d); this.enterPlay(); this.toast('Run restored.','accent'); return true }
+  enterPlay(){ this.state='play'; this.ui.title.classList.add('hidden'); this.ui.overlayGameOver.classList.add('hidden'); this.ui.credits.classList.add('hidden'); this.ui.ending.classList.add('hidden'); this.ui.ending.innerHTML=''
+    this.engine.cam.zoom=1; this.audio.start(); this.setHudVisible(true); this.checkDistrict(true) }
+  toTitle(){ if(this.state==='play'||this.state==='shop') this.save(true); this.state='title'; this.ui.shop.classList.add('hidden'); this.ui.overlayGameOver.classList.add('hidden'); this.ui.credits.classList.add('hidden'); this.ui.ending.classList.add('hidden')
+    this.ui.title.classList.remove('hidden'); this.ui.btnContinue.disabled=!loadSave(); this.setHudVisible(false); this.ui.district.textContent='' }
+  triggerGameOver(){ if(this.state!=='play') return; this.state='over'; this.audio.play('gameover'); this.engine.cam.shake=1; setTimeout(()=>this.ui.overlayGameOver.classList.remove('hidden'),600) }
+  startEnding(){
+    this.state='ending'; this.flags.ignited=true; this.beacon.online=true; this.console.on=true; this.endT=0; this.endLines=0
+    this.quest.mark('beacon','ignite'); this.audio.play('ignite'); this.engine.cam.shake=0.8
+    this.setHudVisible(false); this.ui.toasts.innerHTML=''; this.ui.ending.classList.remove('hidden'); this.ui.ending.innerHTML=''
+    clearSave()
+  }
+  endingLines=['The beacon takes the core, the lens and the starlight, and answers.','Far below, the whole cloud sea catches the light.','Somewhere above, a shuttle changes heading. Someone was waiting for you after all.']
+  updateEnding(dt){
+    this.endT+=dt
+    const bp=this.beacon.iso(); this.engine.cam.follow(bp.x,bp.y-70,dt,1.2); this.engine.cam.zoom=lerp(this.engine.cam.zoom,1.35,1-Math.exp(-0.5*dt))
+    const due=[1.8,4.6,7.4]
+    while(this.endLines<due.length && this.endT>due[this.endLines]){ const el=document.createElement('div'); el.className='line'; el.textContent=this.endingLines[this.endLines]; this.ui.ending.appendChild(el); requestAnimationFrame(()=>el.classList.add('show')); this.endLines++ }
+    if(this.endT>11){ this.state='credits'; this.showCredits() }
+  }
+  showCredits(){
+    const s=this.player.stats, total=this.quest.quests.length, done=this.quest.completed()
+    const rows=[['Time on the decks',fmtTime(this.elapsed)],['Quests completed',`${done} / ${total}`],['Shards collected',s.shardsCollected],['Shards spent',s.shardsSpent],['Drones disabled',s.dronesDown],['Scuttlers disabled',s.scuttlersDown],['Damage taken',s.damageTaken],['Deck revealed',Math.round(100*this.map.discoveredWalkable()/this.map.walkableCount)+'%']]
+    this.ui.creditStats.innerHTML=rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')
+    this.ui.ending.classList.add('hidden'); this.ui.credits.classList.remove('hidden')
   }
 
-  /* Floor helpers */
-  _findRandomFloor(){
-    for(let tries=0; tries<200; tries++){
-      const x=(this.rng()*this.map.w)|0, y=(this.rng()*this.map.h)|0
-      const t=this.map.at(x,y); if(t && t.walkable && t.type!=='wall') return {x,y}
-    } return {x:4,y:4}
-  }
-  _findFloorNear(x0,y0,r){
-    let best={x:x0,y:y0}, bd=1e9
-    for(let y=Math.max(1,y0-r);y<=Math.min(this.map.h-2,y0+r);y++){
-      for(let x=Math.max(1,x0-r);x<=Math.min(this.map.w-2,x0+r);x++){
-        const t=this.map.at(x,y)
-        if(t.walkable && t.type!=='wall'){
-          const d=(x-x0)*(x-x0)+(y-y0)*(y-y0)
-          if(d<bd){bd=d; best={x,y}}
-        }
-      }
-    }
-    return best
-  }
-
-  /* Guaranteed reachable collectibles (BFS from player) */
-  _placeCollectiblesGuaranteed(n){
-    const visited=new Set(), q=[[this.player.x|0,this.player.y|0]]
-    visited.add(`${this.player.x|0},${this.player.y|0}`)
-    const reachable=[]
-    while(q.length){
-      const [x,y]=q.shift(); const t=this.map.at(x,y)
-      if(t?.walkable) reachable.push({x,y})
-      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-        const nx=x+dx, ny=y+dy
-        if(!this.map.inBounds(nx,ny)) continue
-        const key=`${nx},${ny}`; if(visited.has(key)) continue
-        const tt=this.map.at(nx,ny)
-        if(tt.walkable && !(nx===this.gate.x && ny===this.gate.y && !this.gate.open)){
-          visited.add(key); q.push([nx,ny])
-        }
-      }
-    }
-    // sample distinct tiles far enough from player
-    const chosen=[]; const minDist=6
-    for(let i=0;i<reachable.length && chosen.length<n;i++){
-      const p=reachable[(i*37)%reachable.length]
-      if(dist(p.x,p.y,this.player.x,this.player.y)>=minDist && !chosen.some(c=>c.x===p.x&&c.y===p.y)) chosen.push(p)
-    }
-    // If still short, just fill from tail
-    while(chosen.length<n && reachable.length){ const p=reachable.pop(); if(!chosen.some(c=>c.x===p.x&&c.y===p.y)) chosen.push(p) }
-    // Place
-    this.pickups=[]
-    chosen.slice(0,n).forEach(p=>{const item=new Pickup('shard',p.x,p.y,this.sprites); this.pickups.push(item); this.entities.push(item)})
-  }
-
+  /* ---------- input ---------- */
   _wireInput(){
     addEventListener('keydown',e=>{
-      if(!this.musicArmed){ this.musicArmed=true }
+      if(e.code==='KeyM'){ this.toggleSound(); return }
+      if(this.state==='title'){ if(e.code==='Enter') this.beginNew(); return }
+      if(this.state==='shop'){ if(e.code==='Escape'||e.code==='KeyE') this.closeShop(); return }
+      if(this.state!=='play') return
       if(e.code==='KeyE') this.interact()
       else if(e.code==='KeyQ') this.ui.ql.classList.toggle('hidden')
-      else if(e.code==='KeyM') this.toggleMusic()
+      else if(e.code==='KeyN') this.showMinimap=!this.showMinimap
+      else if(e.code==='KeyH') this.ui.help.classList.toggle('hidden')
+      else if(e.code==='Escape') this.toTitle()
     })
-    addEventListener('click',()=>{ if(!this.musicArmed){ this.musicArmed=true } })
-    this.ui.musicBtn.addEventListener('click',()=>this.toggleMusic())
-
-    // MOUSE ↔ TILE ALIGNMENT: account for CSS scaling
-    this.engine.c.addEventListener('mousemove', e=>{
-      const rect=this.engine.c.getBoundingClientRect()
-      const scaleX=this.engine.c.width/rect.width
-      const scaleY=this.engine.c.height/rect.height
-      const mx=(e.clientX-rect.left)*scaleX
-      const my=(e.clientY-rect.top)*scaleY
-      const sx=mx + this.engine.cam.x
-      const sy=my + this.engine.cam.y
-      this.mouseIso=screenToIso(sx,sy)
-    })
-
-    document.getElementById('btnRetry').addEventListener('click',()=>location.reload())
-    document.getElementById('btnPlayAgain').addEventListener('click',()=>location.reload())
-
-    this.events.onMove=(pl)=>{
-      if(dist(pl.x,pl.y,this.chief.x,this.chief.y)<2) this.quest.mark('story',o=>o.id==='reach')
-      const revealed=this.map.discovered.reduce((a,b)=>a+b,0), total=this.map.w*this.map.h
-      if(revealed/total>=0.75) this.quest.mark('explore',o=>o.id==='disc')
-    }
+    this.ui.soundBtn.addEventListener('click',()=>this.toggleSound())
+    this.ui.saveBtn.addEventListener('click',()=>this.save())
+    this.ui.titleBtn.addEventListener('click',()=>this.toTitle())
+    document.getElementById('btnNew').addEventListener('click',()=>this.beginNew())
+    this.ui.btnContinue.addEventListener('click',()=>this.continueRun())
+    this.ui.btnContinue.disabled=!loadSave()
+    document.getElementById('btnShopClose').addEventListener('click',()=>this.closeShop())
+    document.getElementById('btnPlayAgain').addEventListener('click',()=>this.beginNew())
+    document.getElementById('btnCreditsTitle').addEventListener('click',()=>this.toTitle())
+    document.getElementById('btnRetry').addEventListener('click',()=>{ if(!this.continueRun()) this.beginNew() })
+    document.getElementById('btnRetryTitle').addEventListener('click',()=>this.toTitle())
+    this.engine.c.addEventListener('mousemove',e=>{ const rect=this.engine.c.getBoundingClientRect(); this.mouse={x:(e.clientX-rect.left)*this.engine.c.width/rect.width, y:(e.clientY-rect.top)*this.engine.c.height/rect.height} })
+    this.engine.c.addEventListener('mouseleave',()=>{ this.mouse=null })
   }
-  async toggleMusic(){
-    const on = await this.music.toggle()
-    this.ui.musicBtn.textContent = on ? 'Music: On' : 'Music: Off'
-  }
+  toggleSound(){ if(!this.audio.ready) this.audio.init(); const on=this.audio.toggle(); if(on&&this.state!=='title') this.audio.start(); this.ui.soundBtn.textContent='Sound: '+(on?'on':'off') }
+  _mount(){ this.engine.updatables.push({update:(dt)=>this.update(dt)}); this.engine.renderables.push({render:(g)=>this.render(g)}) }
 
-  _mount(){
-    this.engine.updatables.push({update:(dt)=>this.update(dt)})
-    this.engine.renderables.push({render:(g)=>this.render(g)})
-  }
-
-  /* Collision system */
-  isBlockedTile(ix,iy){if(!this.map.inBounds(ix,iy)) return true; const t=this.map.at(ix,iy); return !t?.walkable}
-  resolveCollisions(ent, nx, ny, ignorePlayer=false){
-    let x=nx, y=ny
-    const r=ent.r
-    const minX=Math.floor(x-r-1), maxX=Math.ceil(x+r+1)
-    const minY=Math.floor(y-r-1), maxY=Math.ceil(y+r+1)
-    function collideAABB(cx,cy, tx,ty){
-      const half=0.5
-      const closestX=clamp(cx, tx-half, tx+half)
-      const closestY=clamp(cy, ty-half, ty+half)
-      const dx=cx-closestX, dy=cy-closestY
-      return dx*dx+dy*dy < r*r
-    }
-    // Tiles & closed gate
-    for(let ty=minY; ty<=maxY; ty++){
-      for(let tx=minX; tx<=maxX; tx++){
-        const gateBlock = (!this.gate.open && tx===this.gate.x && ty===this.gate.y)
-        if(this.isBlockedTile(tx,ty) || gateBlock){
-          if(collideAABB(x,y,tx,ty)){
-            const dx=x - clamp(x,tx-0.5,tx+0.5)
-            const dy=y - clamp(y,ty-0.5,ty+0.5)
-            if(Math.abs(dx)>Math.abs(dy)){
-              x = dx>0 ? (tx+0.5)+r : (tx-0.5)-r
-            }else{
-              y = dy>0 ? (ty+0.5)+r : (ty-0.5)-r
-            }
-          }
-        }
+  /* ---------- collision ---------- */
+  isBlockedTile(ix,iy){ const t=this.map.at(ix,iy); return !t||!t.walkable||this.gate.blocks(ix,iy) }
+  resolveCollisions(ent,nx,ny,ignorePlayer=false){
+    let x=nx, y=ny; const r=ent.r
+    const minX=Math.floor(x-r-1), maxX=Math.ceil(x+r+1), minY=Math.floor(y-r-1), maxY=Math.ceil(y+r+1)
+    for(let ty=minY; ty<=maxY; ty++) for(let tx=minX; tx<=maxX; tx++){
+      if(!this.isBlockedTile(tx,ty)) continue
+      const cx=clamp(x,tx,tx+1), cy=clamp(y,ty,ty+1), dx=x-cx, dy=y-cy
+      if(dx*dx+dy*dy<r*r){
+        if(Math.abs(dx)>Math.abs(dy)) x = dx>0 ? (tx+1)+r : tx-r
+        else y = dy>0 ? (ty+1)+r : ty-r
       }
     }
-    // Solid objects
     for(const o of this.entities){
-      if(o===ent) continue
-      if(o.solid && !o.dead){
+      if(o===ent||o.dead) continue
+      if(o.solid){
+        if(ent.kind==='drone'&&(o.kind==='crate'||o.kind==='lamp')) continue
         const d=dist(x,y,o.x,o.y), rr=r+o.r
-        if(d<rr){
-          const nx1=(x-o.x)/ (d||1), ny1=(y-o.y)/(d||1)
-          const push=rr - d
-          x += nx1*push; y += ny1*push
-        }
-      }
-    }
-    // Entity separation
-    for(const o of this.entities){
-      if(o===ent) continue
-      if(o.kind!=='pickup' && !o.dead){
+        if(d<rr){ const nx1=(x-o.x)/(d||1), ny1=(y-o.y)/(d||1); x+=nx1*(rr-d); y+=ny1*(rr-d) }
+      }else if(o.kind!=='pickup'&&o.kind!=='switch'&&o.kind!=='gate'&&(o.kind==='player'?!ignorePlayer:true)){
         const d=dist(x,y,o.x,o.y), rr=r+o.r
-        if(d<rr){
-          const nx1=(x-o.x)/ (d||1), ny1=(y-o.y)/(d||1)
-          const push=rr - d
-          if(o.kind==='player' && ignorePlayer) continue
-          x += nx1*(push*0.7)
-        }
+        if(d<rr){ const nx1=(x-o.x)/(d||1), ny1=(y-o.y)/(d||1); x+=nx1*(rr-d)*0.6; y+=ny1*(rr-d)*0.6 }
       }
     }
     return {x,y}
   }
 
-  /* Rules */
+  /* ---------- rules ---------- */
   interact(){
     let best=null, bd=999
     for(const e of this.entities){
-      if(['npc','terminal','switch','pickup','gate'].includes(e.kind)){
-        const d=dist(this.player.x,this.player.y,e.x,e.y)
-        if(d<1.4 && d<bd){best=e; bd=d}
+      if(['npc','terminal','switch','mirror','pickup','gate','beacon'].includes(e.kind)){
+        const d=dist(this.player.x,this.player.y,e.x,e.y)-(e.kind==='beacon'?0.6:0)
+        if(d<1.5 && d<bd){best=e; bd=d}
       }
     }
-    if(!best){this.toast('Nothing to interact with.'); return}
+    if(!best){ this.toast('Nothing to interact with here.'); return }
+    const Q=this.quest
     if(best.kind==='npc'){
-      best.talk(this)
-      if(best===this.chief && this.player.inv.core){
-        this.player.inv.core=false
-        this.toast('Micro‑core delivered.','accent')
-        this.fxLabel(best,'Thank you.','#b2ffd8')
-        this.quest.mark('story',o=>o.id==='handoff')
-      }
+      if(best===this.chief){
+        Q.mark('story','reach')
+        if(this.player.inv.core){ this.player.inv.core=false; best.talk(this); this.toast('Micro‑core delivered.','accent'); this.fxLabel(best,'Thank you, courier.','#b2ffd8'); Q.mark('story','handoff'); Q.mark('beacon','core'); this.audio.play('item') }
+        else best.talk(this)
+      }else if(best===this.foreman){ Q.mark('foundry','foreman'); best.talk(this) }
+      else if(best===this.archivist){ Q.mark('gardens','archivist'); best.talk(this) }
+      else if(best===this.quartermaster){ best.talk(this); this.openShop() }
+      else best.talk(this)
+      this.audio.play('interact'); this.updateMarkers()
     }else if(best.kind==='terminal'){
-      best.onUse?.(this)
-    }else if(best.kind==='switch'){
-      best.interact(this)
-      const idx=this.switches.indexOf(best); const ids=['pa','pb','pc']; if(idx>=0) this.quest.mark('puzzle',o=>o.id===ids[idx])
+      if(best.type==='kiosk') this.openShop()
+      else if(best.type==='pump'){
+        if(best.on){ this.toast('Coolant pump running.'); return }
+        best.on=true; this.audio.play('pump'); this.fxLabel(best,'PUMP ONLINE','#39ffb8'); this.map.addLight(best.x|0,best.y|0,2.5,0.2)
+        const n=this.pumps.filter(p=>p.on).length; Q.mark('foundry','p'+n)
+        if(n===3){ this.flags.crucibleOn=true; this.crucible.on=true; this.toast('Coolant restored: the crucible is cooling. Lift the lens.','accent',3500) }
+        else this.toast(`Coolant pump ${n}/3 restarted.`,'accent')
+      }else if(best.type==='crucible'){
+        if(this.flags.lensTaken) this.toast('The crucible is empty.')
+        else if(!this.flags.crucibleOn){ this.toast('The crucible is far too hot. Restart the coolant pumps first.','warn'); this.audio.play('denied') }
+        else { this.flags.lensTaken=true; this.player.inv.lens=true; best.on=false; this.audio.play('item'); this.fxLabel(best,'FOCUSING LENS','#ffd45e'); this.toast('Focusing lens recovered. Take it to the beacon console.','accent',3500); Q.mark('foundry','lens'); Q.mark('beacon','lens') }
+      }else if(best.type==='console') this.tryIgnite()
+    }else if(best.kind==='beacon'){ this.tryIgnite() }
+    else if(best.kind==='switch'){
+      best.on=1-best.on; this.audio.play('plate'); this.fxLabel(best,best.on?'RESONANT':'SILENT',best.on?'#8be89e':'#aab7c0')
+      const idx=this.switches.indexOf(best); if(best.on) Q.mark('puzzle',['pa','pb','pc'][idx])
+      if(this.switches.every(s=>s.on===1) && !this.flags.gateOpen){ this.flags.gateOpen=true; this.gate.setOpen(true); this.audio.play('gate'); this.toast('The brass gate on the Observatory bridge rises.','brass',4000); Q.mark('puzzle','open') }
+    }else if(best.kind==='mirror'){
+      best.rotate(); this.audio.play('interact'); this.fxLabel(best,'NESW'[best.dir],'#c58cff')
+      if(this.mirrors.every(m=>m.aligned)){ if(!Q.isDone('gardens','mirrors')){ this.toast('The mirrors agree. Starlight pours down the alignment column.','accent',4000); Q.mark('gardens','mirrors'); Q.mark('beacon','align') } }
     }else if(best.kind==='pickup'){
-      this.entities.splice(this.entities.indexOf(best),1); this.pickups.splice(this.pickups.indexOf(best),1)
-      const n=++this.player.inv.shards; this.toast(`Capacitor shard ${n}/5`, 'accent')
-      const ids=['s1','s2','s3','s4','s5']; this.quest.mark('collect',o=>o.id===ids[Math.min(n-1,4)])
-    }else if(best.kind==='gate'){
-      this.toast(this.gate.open?'Gate open.':'Gate sealed—calibrate plates.')
+      this.collect(best)
+    }else if(best.kind==='gate'){ this.toast(this.gate.open?'The gate stands open.':'Sealed. Three harmonic plates in the Harbour Ring hold it shut.') }
+  }
+  collect(pk){
+    this.removeEntity(pk); if(pk.id!=='drop'){ this.takenIds=this.takenIds||[]; this.takenIds.push(pk.id) }
+    const p=this.player, Q=this.quest
+    if(pk.item==='shard'){ p.inv.shards++; p.stats.shardsCollected++; this.audio.play('pickup'); this.fxLabel(p,'+1 shard','#9ef7d6')
+      if(p.stats.shardsCollected>=8) Q.mark('collect','s8'); if(p.stats.shardsCollected>=16) Q.mark('collect','s16') }
+    else if(pk.item==='chart'){ p.inv.charts++; this.audio.play('item'); this.toast(`Star‑chart fragment ${p.inv.charts}/3 recovered.`,'accent'); Q.mark('gardens','c'+Math.min(3,p.inv.charts))
+      if(p.inv.charts===3){ const h=['north','east','south','west']; this.toast(`Headings: ${h[this.mirrorTargets[0]]}, ${h[this.mirrorTargets[1]]}, ${h[this.mirrorTargets[2]]}.`,'brass',6000) } }
+    this.setHud()
+  }
+  tryIgnite(){
+    const missing=[]
+    if(!this.quest.isDone('story','handoff')) missing.push('the micro‑core delivered to the Chief')
+    if(!this.player.inv.lens) missing.push('the focusing lens from the Foundry')
+    if(!this.quest.isDone('gardens','mirrors')) missing.push('the Observatory mirrors aligned')
+    if(missing.length){ this.audio.play('denied'); this.toast('The beacon needs '+missing.join(', ')+'.','warn',4500); return }
+    this.startEnding()
+  }
+  hitEnemy(e,dmg){
+    if(e.kind==='scuttler'&&e.state==='stunned') dmg*=2
+    e.hp-=dmg; this.audio.play('hit'); this.fxLabel(e,`-${dmg}`,'#ff7b7b'); this.fxSparks(e,'#ffd45e')
+    const dx=e.x-this.player.x, dy=e.y-this.player.y, L=Math.hypot(dx,dy)||1
+    if(e.kind==='drone'){ const res=this.resolveCollisions(e,e.x+dx/L*0.5,e.y+dy/L*0.5,true); e.x=res.x; e.y=res.y }
+    if(e.hp<=0) this.onEnemyDown(e)
+  }
+  onEnemyDown(e){
+    this.removeEntity(e); this.audio.play('enemyDown'); this.fxSparks(e,'#ffffff',18)
+    const Q=this.quest, st=this.player.stats
+    if(e.kind==='drone'){ st.dronesDown++; this.toast('Drone disabled.','warn'); Q.mark('combat',['d1','d2','d3'][Math.min(2,st.dronesDown-1)]); this.addPickup('shard',e.x,e.y,'drop') }
+    else { st.scuttlersDown++; this.toast('Scuttler disabled.','warn'); Q.mark('scuttle',['k1','k2','k3'][Math.min(2,st.scuttlersDown-1)]); this.addPickup('shard',e.x,e.y,'drop'); this.addPickup('shard',e.x+0.4,e.y+0.3,'drop') }
+  }
+  damagePlayer(amount,source,knock=0.3){
+    if(this.state!=='play'||this.player.hurtCd>0) return
+    const p=this.player
+    p.hp=Math.max(0,p.hp-amount); p.hurtCd=0.6; p.stats.damageTaken+=amount
+    this.ui.flash.style.opacity='1'; setTimeout(()=>this.ui.flash.style.opacity='0',120)
+    this.engine.cam.shake=Math.max(this.engine.cam.shake,0.5); this.audio.play('hurt')
+    this.fxLabel(p,`-${amount}`,'#ff7373')
+    if(source){ const dx=p.x-source.x, dy=p.y-source.y, L=Math.hypot(dx,dy)||1; const res=this.resolveCollisions(p,p.x+dx/L*knock,p.y+dy/L*knock); p.x=res.x; p.y=res.y }
+    this.setHud()
+    if(p.hp<=0) this.triggerGameOver()
+  }
+  onPlayerMove(pl){
+    if(this.state!=='play') return
+    if(dist(pl.x,pl.y,this.chief.x,this.chief.y)<2.2) this.quest.mark('story','reach')
+    this.checkDistrict()
+  }
+  checkDistrict(force=false){
+    const d=this.map.districtAt(this.player.x|0,this.player.y|0)
+    if(!d||d==='bridge'){ if(d==='bridge'&&this.district!=='bridge'){ this.district='bridge'; this.ui.district.textContent='Sky bridge' } return }
+    if(d===this.district&&!force) return
+    this.district=d; const D=DISTRICTS[d]
+    this.ui.district.textContent=D.name
+    if(!this.flags.visited[d]||force){
+      this.ui.bannerTitle.textContent=D.name; this.ui.bannerSub.textContent=D.sub; this.ui.banner.classList.add('show'); clearTimeout(this._bannerT); this._bannerT=setTimeout(()=>this.ui.banner.classList.remove('show'),3200)
+      if(!this.flags.visited[d]) this.audio.play('district')
+      this.flags.visited[d]=true
+      if(d==='foundry') this.quest.mark('explore','foundry'); if(d==='gardens') this.quest.mark('explore','gardens')
+      this.save(true)
     }
   }
-  onTerminal(id){ if(id==='beacon'){ this.quest.mark('story',o=>o.id==='beacon'); this.fxLabel(this.term,'BEACON ONLINE','#39ffb8') } }
-  onEnemyDown(e){
-    this.toast('Drone disabled.','warn')
-    const q=this.quest.quests.find(q=>q.id==='combat'); if(!q) return
-    const next=q.objectives.find(o=>!o.done); if(next) this.quest.mark('combat',o=>o.id===next.id)
-  }
-  onSwitch(){
-    const all = this.switches.every(s=>s.on===1)
-    if(all){ this.gate.setOpen(true); this.fxLabel(this.gate,'GATE OPEN','#ffd45e'); this.quest.mark('puzzle',o=>o.id==='open') }
-  }
-  damagePlayer(amount, source){
-    if(this.gameOver||this.victory) return
-    this.player.hp = Math.max(0, this.player.hp - amount)
-    document.getElementById('hp').textContent=this.player.hp
-    this.ui.flash.style.opacity='1'; setTimeout(()=>this.ui.flash.style.opacity='0',120)
-    this.fxLabel(this.player, `-${amount}`, '#ff7373')
-    if(source){ const dx=this.player.x - source.x, dy=this.player.y - source.y; const L=Math.hypot(dx,dy)||1; const k=0.25; const nx=this.player.x + (dx/L)*k, ny=this.player.y + (dy/L)*k
-      const res=this.resolveCollisions(this.player, nx, ny); this.player.x=res.x; this.player.y=res.y }
-    if(this.player.hp<=0) this.triggerGameOver()
+  updateMarkers(){
+    const Q=this.quest
+    this.chief.marker=!Q.isDone('story','handoff'); this.foreman.marker=!Q.isDone('foundry','foreman'); this.archivist.marker=!Q.isDone('gardens','archivist')
   }
 
-  checkVictory(){ if(this.quest.allDone() && !this.victory && !this.gameOver){ this.victory=true; this.engine.stop(); this.ui.overWin.classList.remove('hidden') } }
-  triggerGameOver(){ if(this.gameOver||this.victory) return; this.gameOver=true; this.engine.stop(); this.ui.overLose.classList.remove('hidden') }
+  /* ---------- shop ---------- */
+  openShop(){ if(this.state!=='play') return; this.state='shop'; this.renderShop(); this.ui.shop.classList.remove('hidden'); this.audio.play('interact') }
+  closeShop(){ if(this.state!=='shop') return; this.state='play'; this.ui.shop.classList.add('hidden'); this.save(true) }
+  renderShop(){
+    const p=this.player; this.ui.shopShards.textContent=p.inv.shards
+    this.ui.shopRows.innerHTML=''
+    for(const u of UPGRADES){
+      const lvl=u.consumable?0:p.up[u.id], maxed=!u.consumable&&lvl>=u.max, cost=u.cost[Math.min(lvl,u.cost.length-1)]
+      const row=document.createElement('div'); row.className='shop-row'
+      const ico=document.createElement('canvas'); ico.width=ico.height=34; ico.className='ico'; this.drawShopIcon(ico.getContext('2d'),u.id,u.colour); row.appendChild(ico)
+      const txt=document.createElement('div'); txt.className='txt'; txt.innerHTML=`<b>${u.name}</b><small>${u.desc}</small>`; row.appendChild(txt)
+      const lv=document.createElement('div'); lv.className='lvl'; lv.textContent=u.consumable?(p.hp<p.maxHp?`HP ${p.hp}/${p.maxHp}`:'HP full'):`LV ${lvl}/${u.max}`; row.appendChild(lv)
+      const c=document.createElement('div'); c.className='cost'; c.textContent=maxed?'—':`${cost} ◆`; row.appendChild(c)
+      const b=document.createElement('button'); b.className='btn primary'; b.textContent=maxed?'Maxed':'Buy'; b.disabled=maxed||p.inv.shards<cost||(u.consumable&&p.hp>=p.maxHp)
+      b.addEventListener('click',()=>this.buy(u)); row.appendChild(b)
+      this.ui.shopRows.appendChild(row)
+    }
+  }
+  drawShopIcon(g,id,col){
+    g.fillStyle='#0b151c'; g.fillRect(0,0,34,34); g.strokeStyle=col; g.lineWidth=2; g.fillStyle=col
+    if(id==='plating'){ g.beginPath(); g.moveTo(17,4); g.lineTo(29,9); g.lineTo(26,24); g.lineTo(17,30); g.lineTo(8,24); g.lineTo(5,9); g.closePath(); g.stroke(); g.fillRect(14,12,6,10) }
+    else if(id==='servos'){ g.beginPath(); g.moveTo(10,30); g.lineTo(14,14); g.lineTo(22,12); g.lineTo(26,4); g.stroke(); g.beginPath(); g.arc(14,14,3,0,7); g.fill(); g.fillRect(8,28,10,3) }
+    else if(id==='blade'){ g.beginPath(); g.moveTo(6,28); g.lineTo(26,6); g.lineTo(28,10); g.lineTo(10,30); g.closePath(); g.fill(); g.fillStyle='#8a6a30'; g.fillRect(4,24,6,6) }
+    else if(id==='scanner'){ g.beginPath(); g.arc(17,17,12,0,7); g.stroke(); g.beginPath(); g.arc(17,17,6,0,7); g.stroke(); g.beginPath(); g.moveTo(17,17); g.lineTo(27,9); g.stroke(); g.fillRect(15,15,4,4) }
+    else { g.fillRect(14,6,6,22); g.fillRect(6,14,22,6) }
+  }
+  buy(u){
+    const p=this.player, lvl=u.consumable?0:p.up[u.id], cost=u.cost[Math.min(lvl,u.cost.length-1)]
+    if(p.inv.shards<cost||(!u.consumable&&lvl>=u.max)){ this.audio.play('denied'); return }
+    p.inv.shards-=cost; p.stats.shardsSpent+=cost
+    if(u.id==='plating'){ p.up.plating++; p.maxHp+=2; p.hp=p.maxHp }
+    else if(u.id==='repair'){ p.hp=p.maxHp }
+    else p.up[u.id]++
+    this.audio.play('buy'); this.toast(`${u.name} ${u.consumable?'used':'fitted'}.`,'accent'); this.setHud(); this.renderShop()
+  }
 
-  fxLabel(ent,text,color='#cdeef0'){const s=ent.iso(); this.labels.push({x:s.x,y:s.y-28,a:1,t:0,life:1.2,text,color})}
-  toast(msg,cls){const t=document.createElement('div'); t.className='toast'+(cls?(' '+cls):''); t.textContent=msg; this.ui.toasts.appendChild(t); setTimeout(()=>t.remove(),2000)}
+  /* ---------- presentation helpers ---------- */
+  say(npc,line){ this.toast(`${npc.name}: ${line}`,null,5200) }
+  fxLabel(ent,text,colour='#cdeef0'){const s=ent.iso(); this.labels.push({x:s.x,y:s.y-50,a:1,t:0,life:1.4,text,colour})}
+  fxSlash(p){ this.fx.push({type:'slash',x:p.x,y:p.y,face:p.face,t:0,life:0.18}) }
+  fxSparks(ent,colour,n=10){ for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, sp=40+Math.random()*90; this.fx.push({type:'spark',x:ent.x,y:ent.y,sx:Math.cos(a)*sp,sy:Math.sin(a)*sp*0.5-60,vz:0,t:0,life:0.4+Math.random()*0.4,colour}) } }
+  toast(msg,cls,ms=2400){const t=document.createElement('div'); t.className='toast'+(cls?(' '+cls):''); t.textContent=msg; this.ui.toasts.appendChild(t); while(this.ui.toasts.children.length>4) this.ui.toasts.firstChild.remove(); setTimeout(()=>t.remove(),ms)}
+  setHud(){ const p=this.player; this.ui.hp.textContent=`${p.hp}/${p.maxHp}`; this.ui.hpfill.style.width=(100*p.hp/p.maxHp)+'%'; this.ui.hpfill.classList.toggle('low',p.hp<=3); this.ui.shards.textContent=p.inv.shards }
   refreshQuestUi(){
     const wrap=this.ui.quests; wrap.innerHTML=''
-    for(const q of this.quest.quests){
-      const box=document.createElement('div'); box.className='quest'
-      const h=document.createElement('h3'); h.textContent=q.title; const tag=document.createElement('span'); tag.className='tag'; tag.textContent=q.type; h.appendChild(tag); box.appendChild(h)
-      for(const o of q.objectives){const p=document.createElement('div'); p.className='q-obj'+(o.done?' q-done':''); p.textContent=o.text; box.appendChild(p)}
+    const order=['all',this.district||'harbour','harbour','foundry','gardens']
+    const qs=[...this.quest.quests].sort((a,b)=>(a.done?1:0)-(b.done?1:0)||order.indexOf(a.district)-order.indexOf(b.district))
+    let lastD=null
+    for(const q of qs){
+      if(!q.done && q.district!==lastD){ const h=document.createElement('h2'); h.textContent=q.district==='all'?'Across the concourse':DISTRICTS[q.district].name; wrap.appendChild(h); lastD=q.district }
+      const box=document.createElement('div'); box.className='quest'+(q.done?' q-complete':'')
+      const h=document.createElement('h3'); h.textContent=q.title; const tag=document.createElement('span'); tag.className='tag'; tag.textContent=q.done?'complete':q.type; h.appendChild(tag); box.appendChild(h)
+      if(!q.done) for(const o of q.objectives){const p=document.createElement('div'); p.className='q-obj'+(o.done?' q-done':''); p.textContent=o.text; box.appendChild(p)}
       wrap.appendChild(box)
     }
   }
 
+  /* ---------- per-frame ---------- */
   update(dt){
-    if(this.gameOver||this.victory) return
+    const t=this.engine.time
+    if(this.state==='title'){
+      // slow drift across the concourse behind the title card
+      const a=t*0.05, cx=isoToScreen(32,24).x, cy=isoToScreen(32,24).y
+      this.engine.cam.follow(cx+Math.cos(a)*520, cy+Math.sin(a*0.7)*140, dt, 1.5); this.engine.cam.zoom=0.9
+      for(const e of this.entities) if(e.kind==='pickup'||e.kind==='beacon') e.update?.(dt,this)
+      return
+    }
+    if(this.state==='ending'||this.state==='credits'){ if(this.state==='ending') this.updateEnding(dt); for(const e of this.entities) if(e.kind!=='player'&&e.kind!=='drone'&&e.kind!=='scuttler') e.update?.(dt,this); this.stepFx(dt); return }
+    if(this.state==='over'){ this.stepFx(dt); return }
+    if(this.state==='shop'){ return }
+    this.elapsed+=dt
     for(const e of this.entities){ e.update?.(dt,this) }
-    for(const L of this.labels){ L.t+=dt; L.y-=14*dt; L.a = 1 - (L.t/L.life) }
-    this.labels = this.labels.filter(L=>L.t<L.life)
-    const ps=this.player.iso(); this.engine.cam.centerOn(ps.x,ps.y,this.engine.c.width,this.engine.c.height)
+    this.stepFx(dt)
+    const ps=this.player.iso(); this.engine.cam.follow(ps.x,ps.y-20,dt,7)
+    this.saveTimer+=dt; if(this.saveTimer>20){ this.saveTimer=0; this.save(true) }
+    this.hudTimer+=dt; if(this.hudTimer>0.5){ this.hudTimer=0; this.ui.clock.textContent=fmtTime(this.elapsed)
+      if(!this.quest.isDone('explore','disc') && this.map.discoveredWalkable()/this.map.walkableCount>=0.6) this.quest.mark('explore','disc') }
+  }
+  stepFx(dt){
+    for(const L of this.labels){ L.t+=dt; L.y-=16*dt; L.a=1-(L.t/L.life) }
+    this.labels=this.labels.filter(L=>L.t<L.life)
+    for(const f of this.fx){ f.t+=dt; if(f.type==='spark'){ f.x+=f.sx*dt/TILE_W*2; f.y+=f.sy*dt/TILE_W*2; f.sy+=160*dt } }
+    this.fx=this.fx.filter(f=>f.t<f.life)
   }
   render(g){
-    const cam=this.engine.cam
-    g.save(); g.translate(-cam.x, -cam.y)
-    // Ground tiles
+    const W=this.engine.c.width, H=this.engine.c.height, cam=this.engine.cam, t=this.engine.time
+    const glow=this.beacon.power
+    this.sky.render(g,W,H,cam,t,glow)
+    g.save(); cam.apply(g,W,H,t)
+    const v=cam.view(W,H)
+    const px=this.player.x, py=this.player.y
+    const scene=[]
+    const titleMode=this.state==='title'
     for(let y=0;y<this.map.h;y++)for(let x=0;x<this.map.w;x++){
-      const t=this.map.at(x,y), s=isoToScreen(x,y,0)
-      const pat=this.factory.faces[t.type] || this.factory.faces.steel
-      this.factory.drawDiamond(g,s.x,s.y,t.height?8:0,pat)
-      if(!this.map.isDiscovered(x,y)){g.fillStyle='rgba(6,10,14,0.65)'; g.beginPath(); g.moveTo(s.x,s.y); g.lineTo(s.x+TILE_W/2,s.y+TILE_H/2); g.lineTo(s.x,s.y+TILE_H); g.lineTo(s.x-TILE_W/2,s.y+TILE_H/2); g.closePath(); g.fill()}
+      const tl=this.map.at(x,y); if(tl.type==='void') continue
+      const s=isoToScreen(x,y,0)
+      if(s.x<v.l-TILE_W||s.x>v.r+TILE_W||s.y<v.t-120||s.y>v.b+40) continue
+      const disc=titleMode||this.map.isDiscovered(x,y)
+      const d=dist(x+0.5,y+0.5,px,py), lamp=titleMode?0.15:Math.max(0,1-d/6.5)*0.5
+      let b=tl.lit+lamp+glow*0.35
+      if(!disc) b=Math.min(b,0.22)
+      if(tl.dropL||tl.dropR) this.tiles.drop(g,tl,s.x,s.y)
+      if(tl.type==='wall'||tl.type==='rail') scene.push({depth:x+y+0.5,wall:tl,s,b})
+      else this.tiles.floor(g,tl,s.x,s.y,b,t)
     }
-    // Entities sorted by iso depth
-    const ents=[...this.entities].sort((a,b)=>(a.x+a.y)-(b.x+b.y))
-    for(const e of ents){ if(this.map.isDiscovered(e.x|0,e.y|0)) e.render(g,this.engine) }
-    // Labels
-    for(const L of this.labels){ g.globalAlpha=L.a; g.fillStyle='#0b0b0b'; g.fillRect(L.x-40,L.y-10,80,16); g.strokeStyle='rgba(255,255,255,.12)'; g.strokeRect(L.x-40,L.y-10,80,16);
-      g.fillStyle=L.color; g.textAlign='center'; g.textBaseline='middle'; g.font='12px monospace'; g.fillText(L.text,L.x,L.y); g.globalAlpha=1 }
-    // Mouse tile highlight (aligned)
-    const hx=Math.round(this.mouseIso.x), hy=Math.round(this.mouseIso.y)
-    if(this.map.inBounds(hx,hy)){ const s=isoToScreen(hx,hy,0); g.strokeStyle='rgba(57,255,184,.7)'; g.beginPath(); g.moveTo(s.x,s.y); g.lineTo(s.x+TILE_W/2,s.y+TILE_H/2); g.lineTo(s.x,s.y+TILE_H); g.lineTo(s.x-TILE_W/2,s.y+TILE_H/2); g.closePath(); g.stroke() }
+    for(const e of this.entities){
+      if(e.dead&&e.kind!=='player') continue
+      const s=isoToScreen(e.x,e.y,0)
+      if(s.x<v.l-120||s.x>v.r+120||s.y<v.t-200||s.y>v.b+80) continue
+      if(e.kind!=='player'&&!titleMode&&!this.map.isDiscovered(e.x|0,e.y|0)) continue
+      scene.push({depth:e.x+e.y+(e.kind==='gate'?0.9:0),ent:e})
+    }
+    scene.sort((a,b)=>a.depth-b.depth)
+    const pp=this.player.iso(), pd=this.player.x+this.player.y
+    for(const it of scene){
+      if(it.wall){
+        const behind=it.wall.type==='wall'&&!titleMode&&it.depth>pd&&Math.abs(it.s.x-pp.x)<64&&it.s.y-pp.y>-20&&it.s.y-pp.y<76
+        if(behind) g.globalAlpha=0.38
+        if(it.wall.type==='wall') this.tiles.wall(g,it.wall,it.s.x,it.s.y,it.b,t); else this.tiles.rail(g,it.wall,it.s.x,it.s.y,it.b)
+        g.globalAlpha=1 }
+      else it.ent.render(g,this)
+    }
+    // effects
+    for(const f of this.fx){
+      if(f.type==='slash'){ const s=isoToScreen(f.x,f.y,0); const k=f.t/f.life; g.strokeStyle=`rgba(200,255,240,${1-k})`; g.lineWidth=3; g.beginPath(); g.ellipse(s.x+f.face*14,s.y-10,22+k*10,9+k*4,0,f.face>0?-1.2:Math.PI-1.2,f.face>0?1.2:Math.PI+1.2); g.stroke() }
+      else { const s=isoToScreen(f.x,f.y,0); g.fillStyle=f.colour; g.globalAlpha=1-f.t/f.life; g.fillRect(s.x-1.5,s.y-14-1.5,3,3); g.globalAlpha=1 }
+    }
+    for(const L of this.labels){ g.globalAlpha=Math.max(0,L.a); g.font='bold 12px monospace'; const w=g.measureText(L.text).width+12; g.fillStyle='rgba(6,10,14,.85)'; g.fillRect(L.x-w/2,L.y-10,w,18); g.strokeStyle='rgba(255,255,255,.12)'; g.strokeRect(L.x-w/2,L.y-10,w,18);
+      g.fillStyle=L.colour; g.textAlign='center'; g.textBaseline='middle'; g.fillText(L.text,L.x,L.y); g.globalAlpha=1; g.textBaseline='alphabetic' }
+    // hover tile
+    if(this.mouse&&this.state==='play'){ const wpt=cam.toWorld(this.mouse.x,this.mouse.y,W,H); const iso=screenToIso(wpt.x,wpt.y); const hx=Math.floor(iso.x), hy=Math.floor(iso.y)
+      if(this.map.isDiscovered(hx,hy)&&this.map.at(hx,hy).type!=='void'){ const s=isoToScreen(hx,hy,0); g.strokeStyle='rgba(57,255,184,.6)'; g.lineWidth=1.5; diamondPath(g,s.x,s.y); g.stroke() } }
     g.restore()
+    // vignette
+    const vg=g.createRadialGradient(W/2,H/2,H*0.45,W/2,H/2,H*0.95); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.45)'); g.fillStyle=vg; g.fillRect(0,0,W,H)
+    if(this.state==='over'){ g.fillStyle='rgba(60,0,0,.35)'; g.fillRect(0,0,W,H) }
+    if((this.state==='play'||this.state==='shop')&&this.showMinimap) this.renderMinimap(g,W,H)
+  }
+  renderMinimap(g,W,H){
+    const mc=this.mini.canvas, mw=mc.width, mh=mc.height
+    this.mini.t+=1
+    if(this.mini.t%12===1){
+      const m=mc.getContext('2d'); m.clearRect(0,0,mw,mh)
+      const scanner=this.player.up.scanner>0
+      const ox=mw/2-8, oy=12
+      const col={harbour:'#3e5a6c',foundry:'#6a4432',gardens:'#3f4f78',bridge:'#8a6a30'}
+      for(let y=0;y<this.map.h;y++)for(let x=0;x<this.map.w;x++){
+        const t=this.map.at(x,y); if(t.type==='void') continue
+        const disc=this.map.isDiscovered(x,y); if(!disc&&!scanner) continue
+        const sx=ox+(x-y)*1.7, sy=oy+(x+y)*0.85
+        m.fillStyle=t.type==='wall'?'#aab6c4':t.type==='rail'?'#5a4a2c':t.type==='bridge'?col.bridge:(col[t.district]||'#333')
+        m.globalAlpha=disc?1:0.35; m.fillRect(sx-1.7,sy,3.4,1.7)
+      }
+      m.globalAlpha=1
+      const dot=(e,c,r=2)=>{ const sx=ox+(e.x-e.y)*1.7, sy=oy+(e.x+e.y)*0.85; m.fillStyle=c; m.beginPath(); m.arc(sx,sy,r,0,Math.PI*2); m.fill() }
+      for(const e of this.entities){
+        if(e.dead) continue
+        const seen=scanner||this.map.isDiscovered(e.x|0,e.y|0)
+        if(e.kind==='npc'&&seen) dot(e,'#ffd45e')
+        else if((e.kind==='terminal'||e.kind==='beacon'||e.kind==='mirror'||e.kind==='switch')&&seen) dot(e,e.kind==='beacon'?'#39ffb8':'#7cf7ff',e.kind==='beacon'?3:1.6)
+        else if(e.kind==='pickup'&&(scanner||(seen&&dist(e.x,e.y,this.player.x,this.player.y)<9))) dot(e,e.item==='shard'?'#9ef7d6':'#c58cff',1.5)
+        else if((e.kind==='drone'||e.kind==='scuttler')&&(scanner||dist(e.x,e.y,this.player.x,this.player.y)<8)) dot(e,'#ff6b6b',1.8)
+        else if(e.kind==='gate'&&seen) dot(e,this.gate.open?'#8a6a30':'#ffd45e',2)
+      }
+      dot(this.player,'#ffffff',2.4)
+    }
+    const x0=12, y0=H-mh-48
+    g.fillStyle='rgba(8,13,19,.82)'; g.strokeStyle='#1e2a37'; g.lineWidth=1
+    g.beginPath(); g.roundRect?g.roundRect(x0,y0,mw,mh,8):g.rect(x0,y0,mw,mh); g.fill(); g.stroke()
+    g.drawImage(mc,x0,y0)
+    g.fillStyle='#7c95a3'; g.font='10px system-ui,sans-serif'; g.textAlign='left'; g.fillText('MINIMAP · N to hide'+(this.player.up.scanner?' · scanner':''),x0+8,y0+mh-6)
   }
 }
 
@@ -826,8 +1601,6 @@ class Game{
   function fit(){const w=innerWidth, h=innerHeight-50; const s=Math.min(w/1280,h/720); canvas.style.width=(1280*s)+'px'; canvas.style.height=(720*s)+'px'}
   addEventListener('resize',fit); fit()
   const game=new Game(canvas); window.__game=game
-  game.refreshQuestUi()
-  document.getElementById('hp').textContent=game.player.hp
   game.start()
 })();
 </script>
