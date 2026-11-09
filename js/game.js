@@ -330,6 +330,9 @@ class Game {
     setTimeout(() => this.floatText(u, `+${d.shards} shards`, '#39ffb8', 14), 300);
     this.log(`${d.name} disabled.`, 'accent');
     this.updateTurnBar();
+    this.checkDefeatQuests();
+  }
+  checkDefeatQuests() {
     for (const q of this.quests) if (q.status === 'active' && q.def.type === 'defeat') {
       const left = this.enemies().filter(e => q.def.group === 'all' || e.type === q.def.group).length;
       if (left === 0) this.completeQuest(q);
@@ -484,6 +487,7 @@ class Game {
     const next = this.quests.find(x => x.status === 'locked');
     if (next) { next.status = 'active'; this.log(`New objective: ${next.def.text}`, 'brass'); }
     this.refreshHud();
+    if (next && next.def.type === 'defeat') { this.checkDefeatQuests(); return; }
     if (!next) {
       if (this.mapIndex === MAPS.length - 1) this.startEnding(); else this.clearDistrict();
     }
