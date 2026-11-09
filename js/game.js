@@ -274,8 +274,9 @@ class Game {
     }
     if (q.def.type === 'deliver') {
       const i = this.carried.findIndex(c => c.id === q.def.item);
-      if (i < 0) { this.toast(`You need the ${q.def.item === 'coolant' ? 'coolant cell' : q.def.item === 'starchart' ? 'star-chart' : 'item'} first.`, 'warn'); return; }
+      if (i < 0) { this.toast(`You need the ${{ coolant: 'coolant cell', starchart: 'star-chart', microcore: 'micro-core' }[q.def.item] || 'item'} first.`, 'warn'); return; }
       this.carried.splice(i, 1);
+      if (q.def.at === 'A' && this.map.markers.A.kind === 'beacon') this.carried = [];
     }
     this.completeQuest(q);
   }

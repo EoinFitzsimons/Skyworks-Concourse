@@ -132,7 +132,7 @@ const MAPS = [
     quests: [
       { id: 'o1', title: 'Reach the mirror console', text: 'Cross the catwalk to the mirror console on the lower terrace.', type: 'reach', at: 'A', done: 'The mirrors begin to turn. They will need three turns to settle.' },
       { id: 'o2', title: 'Hold the console', text: 'End your turn on the mirror console for 3 turns in a row.', type: 'hold', at: 'A', turns: 3, done: 'The mirrors lock on the beacon\'s bearing.' },
-      { id: 'o3', title: 'Recover the star-chart', text: 'Find the star-chart near the sentry post and bring it to Archivist Vey.', type: 'deliver', item: 'starchart', at: 'B', done: '"Lens, bearing and core," Vey says. "The spire will fight you for it. Go."' },
+      { id: 'o3', title: 'Recover the star-chart', text: 'Find the star-chart near the sentry post and bring it to Archivist Vey.', type: 'deliver', item: 'starchart', at: 'B', done: '"Lens, bearing and core," Vey says, packing all three into your satchel; the Chief sent the micro-core up on the lift behind you. "The spire will fight you for them. Go."' },
       { id: 'o4', title: 'Ascend to the spire', text: 'Reach the spire lift.', type: 'reach', at: 'C', done: 'The lift climbs through the cloud deck towards the dark beacon.' }
     ]
   },
@@ -154,9 +154,10 @@ const MAPS = [
       '~~~~~~~~~~~~~~~~'
     ],
     markers: { A: { label: 'Beacon console', kind: 'beacon' } },
+    startItems: [{ id: 'microcore', name: 'Micro-core' }, { id: 'lens', name: 'Focusing lens' }, { id: 'bearing', name: 'Beacon bearing' }],
     quests: [
       { id: 's1', title: 'Bring down the Warden', text: 'Defeat the Beacon Warden guarding the summit.', type: 'defeat', group: 'warden', done: 'The Warden collapses in a shower of sparks. The console is unguarded.' },
-      { id: 's2', title: 'Light the beacon', text: 'Reach the beacon console and activate it.', type: 'reach', at: 'A', done: 'The beacon takes the core.' }
+      { id: 's2', title: 'Light the beacon', text: 'Carry the core, lens and bearing to the beacon console.', type: 'deliver', item: 'microcore', at: 'A', done: 'The beacon takes the core.' }
     ]
   }
 ];
