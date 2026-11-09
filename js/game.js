@@ -528,7 +528,7 @@ class Game {
       const lv = document.createElement('div'); lv.className = 'lvl'; lv.textContent = it.id === 'kit' ? `held ${lvl}` : it.max === 1 ? (lvl ? 'owned' : '') : `lvl ${lvl}/${it.max}`; row.appendChild(lv);
       const cost = document.createElement('div'); cost.className = 'cost'; cost.textContent = `${it.cost} ◆`; row.appendChild(cost);
       const btn = document.createElement('button'); btn.className = 'btn'; btn.textContent = 'Buy';
-      const maxed = it.id !== 'kit' && lvl >= it.max;
+      const maxed = lvl >= it.max;
       btn.disabled = maxed || this.shards < it.cost;
       if (maxed) btn.textContent = 'Max';
       btn.onclick = () => this.buy(it);
@@ -550,7 +550,8 @@ class Game {
     }
   }
   buy(it) {
-    if (this.shards < it.cost) { this.audio.play('denied'); return; }
+    const lvl = it.id === 'kit' ? (this.items.kit || 0) : (this.upgrades[it.id] || 0);
+    if (this.shards < it.cost || lvl >= it.max) { this.audio.play('denied'); return; }
     this.shards -= it.cost; this.stats.bought++;
     if (it.id !== 'kit') this.upgrades[it.id] = (this.upgrades[it.id] || 0) + 1;
     it.apply(this);
