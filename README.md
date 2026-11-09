@@ -11,7 +11,7 @@ Play it at **https://eoinfitzsimons.github.io/Skyworks-Concourse/**
 - **Hex board on canvas.** Pointy-top hexes drawn entirely in code: deck plating, catwalks, open sky (impassable), cargo cover (blocks movement and line of sight), steam vents (cost 2 and scald on odd rounds), lift pads and quest markers.
 - **Four hand-designed maps.** Harbour Ring, Foundry Deck, Observatory Gardens and the Beacon Spire finale.
 - **Initiative turn order.** Every round the courier and the enemies act in initiative order, shown in the turn bar above the board. Enemies move visibly, hex by hex.
-- **Five enemy types with their own behaviour.** Drones patrol and swarm, scuttlers lurk in cover and flee when hurt, turrets hold position and fire at range, skimmers hit and run, and the Beacon Warden guards the summit and charges a heavy blast.
+- **Five enemy types with their own behaviour.** Drones patrol until they spot you, swarm in and break off trailing smoke when badly hurt; scuttlers charge the moment they see you and never retreat; turrets hold position and fire at anything in line of sight; skimmers hit and run, keeping two or three hexes away; the Beacon Warden simply advances and hits harder once its core overloads.
 - **Quest objectives.** Deliver items, reach hexes, defeat groups and hold a position for three turns.
 - **Shards and upgrades.** Collect shards on the board and from fallen enemies; spend them between districts on hull plating, leg servos, a reflex coil, a sharper blade, the Overclock module or repair kits.
 - **Abilities.** Arc Blade (adjacent), Arc Bolt (three hexes with line of sight, recharges), Repair Kit (item) and Overclock (extra move and action, once bought).
