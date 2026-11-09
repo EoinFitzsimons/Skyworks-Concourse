@@ -100,7 +100,7 @@ main{position:relative;overflow:hidden}
 #phase.enemy{color:var(--danger)}
 
 /* Overlays */
-.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,10,.55);backdrop-filter:blur(2px);z-index:20}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,10,.72);z-index:20}
 .panel{min-width:340px;max-width:560px;background:linear-gradient(180deg,#0c141c,#0a1015);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.45);padding:20px 22px;text-align:center}
 .panel h1{font-size:24px;margin-bottom:10px;color:#e7f6ff;letter-spacing:.04em}
 .panel p{color:#b7c6cf;margin-bottom:12px}
@@ -139,7 +139,7 @@ main{position:relative;overflow:hidden}
 .shop-row .cost{color:var(--brass);min-width:60px;text-align:right}
 .shop-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:#a4bac7}
 
-#ending{background:transparent;backdrop-filter:none;pointer-events:none;flex-direction:column;justify-content:flex-end;padding-bottom:110px}
+#ending{background:transparent;pointer-events:none;flex-direction:column;justify-content:flex-end;padding-bottom:110px}
 #ending .line{font-size:20px;color:#eafff7;text-shadow:0 2px 12px rgba(0,0,0,.8),0 0 24px rgba(57,255,184,.35);margin:6px 0;opacity:0;transition:opacity .9s ease;letter-spacing:.04em}
 #ending .line.show{opacity:1}
 #credits .panel,#cleared .panel{max-width:520px}
