@@ -427,7 +427,9 @@ class Game {
     await this.moveAlong(u, Hex.pathFrom(reach, pick.hex));
   }
   async runAi(u) {
-    const p = this.player, d = UNIT_TYPES[u.type], dist = Hex.distance(u, p), sees = dist <= d.sight;
+    const p = this.player, d = UNIT_TYPES[u.type], dist = Hex.distance(u, p);
+    // Patrolling units need line of sight to notice the courier; once alerted they track by distance
+    const sees = dist <= d.sight && (u.state !== 'patrol' || this.hasLos(u, p));
     switch (u.type) {
       case 'drone': {
         if (u.hp <= 2) {
