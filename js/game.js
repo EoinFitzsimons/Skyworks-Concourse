@@ -614,11 +614,10 @@ class Game {
     this.player = this.units.find(u => u.isPlayer);
     this.turn = { round: d.round, order: d.order, index: d.index }; this.ventsActive = d.ventsActive;
     this.quests.forEach((q, i) => { if (d.quests[i]) { q.status = d.quests[i].status; q.progress = d.quests[i].progress; } });
-    // Older saves predate a district's starting items: restore any that an unfinished delivery still needs
-    for (const it of this.map.def.startItems || []) {
-      const needed = this.quests.some(q => q.status !== 'done' && q.def.type === 'deliver' && q.def.item === it.id);
-      if (needed && !this.carried.some(c => c.id === it.id)) this.carried.push({ ...it });
-    }
+    // Older saves predate a district's starting items: while a delivery of one of them is still open, restore the whole set
+    const startItems = this.map.def.startItems || [];
+    const deliveryOpen = this.quests.some(q => q.status !== 'done' && q.def.type === 'deliver' && startItems.some(it => it.id === q.def.item));
+    if (deliveryOpen) for (const it of startItems) if (!this.carried.some(c => c.id === it.id)) this.carried.push({ ...it });
     this.map.pickups = this.map.pickups.filter(p => d.pickups.some(h => Hex.equals(h, p.hex)));
     for (const k in d.markers) if (this.map.markers[k]) this.map.markers[k].done = d.markers[k];
     this.mapSnapshot = d.mapSnapshot;
