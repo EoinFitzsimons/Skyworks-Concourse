@@ -113,7 +113,12 @@ class Game {
     this.audio.play('district');
     this.refreshHud();
     if (!restore) { this.startRound(); this.save(true); }
-    else { this.buildTurnBar(); this.beginPlayerTurn(true); }
+    else {
+      this.buildTurnBar();
+      const active = this.activeUnit();
+      if (active && active.isPlayer) this.beginPlayerTurn(true);
+      else { this.turn.index--; this.nextTurn(); }
+    }
   }
 
   /* ---------------- rounds and turns ---------------- */
