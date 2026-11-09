@@ -393,7 +393,7 @@ class Game {
     if (this.unitAt(h)) return Infinity;
     return t.def.cost + (t.def.hazard && this.ventsActive ? 4 : 0);
   }
-  canAttack(u, target) { return Hex.distance(u, target) <= u.range && (u.range === 1 || this.hasLos(u, target)); }
+  canAttack(u, target) { return u.alive && target.alive && Hex.distance(u, target) <= u.range && (u.range === 1 || this.hasLos(u, target)); }
   async enemyMoveTowards(u, goal, stopAt = 1) {
     const path = Hex.astar(u, goal, h => this.enemyCost(h, u), true);
     if (!path || path.length < 2) return false;
